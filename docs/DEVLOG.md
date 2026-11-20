@@ -20,7 +20,7 @@ So arbeiten wir größtenteils in verschiedenen Dateien.
 | Wer isst? | Jeder Zwerg isst 1 Ration pro Tag – auch auf Expedition, weil er sich seine Ration mitnimmt. | `dailyMeals` in `simulation.ts` |
 | Was passiert bei Hunger? | Reicht das Essen nicht, ist die Kolonie `starving` und am nächsten Tag arbeitet nur die Pilzfarm. Essen wird nie negativ. | `advanceDay`, `isHaltedByHunger` in `simulation.ts` |
 | Wie werden Tools gespeichert? | Keine einzelnen Tool-Objekte, sondern: `resources.tools` = Tools im Lager, `dwarf.hasTool` = Zwerg trägt eines. | `types.ts` |
-| Wobei hilft ein Tool? | Nur bei Woodcutting und Mining (Axt / Spitzhacke), nicht auf der Pilzfarm. | kommt in D2 Schritt 3 |
+| Wobei hilft ein Tool? | +1 pro Tag, aber nur bei Woodcutting und Mining (Axt / Spitzhacke), nicht auf der Pilzfarm. | `getsToolBonus`, `TOOL_JOBS` in `simulation.ts` |
 | Was kostet eine Waffe? | 2 Holz + 4 Stein. Steinlastiger als ein Tool, damit Mining für die Verteidigung wichtig wird. | kommt in D2 Schritt 4 |
 
 ## Log
@@ -154,3 +154,22 @@ die Gesamtzahl bleibt also immer gleich.
   und wer ein Tool trägt, hat ein ⚒️ neben dem Namen. Der Button ist gesperrt,
   wenn das Lager leer ist oder der Zwerg unterwegs ist. In der Ressourcenleiste
   steht unter "Tools in store" zusätzlich, wie viele gerade ausgerüstet sind.
+
+### D2 – Schritt 3: Tools bringen +1 Produktion (Patrick)
+
+Ein ausgerüstetes Tool bringt jetzt eine Einheit mehr pro Tag: Holz 3 → 4,
+Stein 2 → 3. Wir haben festgelegt, dass das nur bei Woodcutting und Mining gilt,
+weil Axt und Spitzhacke auf der Pilzfarm nichts bringen. So hat das "compatible
+local job" aus dem Requirement auch wirklich eine Bedeutung.
+
+- `simulation.ts`: `TOOL_BONUS`, `TOOL_JOBS` und `getsToolBonus(dwarf)`. Der Bonus
+  wird direkt in `dailyProduction` dazugerechnet. Dadurch gelten automatisch die
+  Regeln von D1 mit: Wer unterwegs ist oder wessen Job wegen Hunger steht, bekommt
+  auch keinen Bonus.
+- Die Logik steht in `simulation.ts` und nicht in `game/tools.ts`, weil
+  `tools.ts` schon `simulation.ts` importiert und es sonst einen Kreis-Import gäbe.
+- Shift Ledger: Jede Job-Kachel zeigt jetzt die echte Tagesmenge inklusive Bonus
+  (wieder über `dailyProduction`), wie viele davon ein Tool haben, und darunter
+  "3 per dwarf, +1 with tool" bzw. "tools don't help" bei der Farm.
+- Roster: Unter einem Zwerg mit Tool steht, ob es bei seinem aktuellen Job etwas
+  bringt ("Tool: +1 per day on this job") oder nicht.

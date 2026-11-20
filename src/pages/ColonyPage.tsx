@@ -4,12 +4,16 @@ import { DwarfRoster } from "../components/DwarfRoster";
 import {
   dailyMeals,
   dailyProduction,
+  getsToolBonus,
   isHaltedByHunger,
   isProducing,
+  isToolCompatible,
   jobLabel,
   production,
+  TOOL_BONUS,
 } from "../simulation";
 import { useColony } from "../state/ColonyContext";
+import type { ResourceKey } from "../types";
 
 export function ColonyPage() {
   const {
@@ -53,6 +57,19 @@ export function ColonyPage() {
           <div className="job-grid">
             {(["woodcutting", "mining", "farming"] as const).map((job) => {
               const halted = isHaltedByHunger(job, colony.starving);
+              const [resource, base] = Object.entries(production[job])[0];
+              // Real total of this job today (incl. tool bonus) – same function
+              // as the simulation, only for the dwarves on this job.
+              const jobTotal = dailyProduction(
+                colony.dwarves.filter((dwarf) => dwarf.assignment === job),
+                colony.starving,
+              )[resource as ResourceKey];
+              const withTool = colony.dwarves.filter(
+                (dwarf) =>
+                  dwarf.assignment === job &&
+                  isProducing(dwarf) &&
+                  getsToolBonus(dwarf),
+              ).length;
               return (
                 <article key={job} className={halted ? "halted" : undefined}>
                   <b>
@@ -70,13 +87,19 @@ export function ColonyPage() {
                           dwarf.assignment === job && isProducing(dwarf),
                       ).length
                     }{" "}
-                    at work
+                    at work{withTool > 0 && ` · ${withTool} with tool`}
                   </p>
                   {halted ? (
                     <strong className="loss">Halted – hunger</strong>
                   ) : (
-                    <strong>+{Object.values(production[job])[0]} / day</strong>
+                    <strong>+{jobTotal} / day</strong>
                   )}
+                  <small className="job-rate">
+                    {base} per dwarf
+                    {isToolCompatible(job)
+                      ? `, +${TOOL_BONUS} with tool`
+                      : ", tools don't help"}
+                  </small>
                 </article>
               );
             })}

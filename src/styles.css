@@ -23,3 +23,6 @@
 .tool-button{display:block;margin-top:6px;padding:3px 8px;background:#2a2118;color:#d9a34f;border:1px solid #74552d;font:600 10px Barlow Condensed;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
 .tool-button:disabled{opacity:.4;cursor:not-allowed}
 .resource-bar em{font:11px Barlow Condensed;font-style:normal;color:#967f64}
+.tool-note{display:block;margin:-4px 0 6px;font:11px Barlow Condensed;color:#75b66e}
+.tool-note.unused{color:#967f64}
+.job-rate{display:block;margin-top:3px;font:10px Barlow Condensed;color:#7d6a52}

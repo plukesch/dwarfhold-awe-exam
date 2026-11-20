@@ -119,3 +119,41 @@ describe("hunger (D1)", () => {
     expect(advanceDay(state)).toEqual(advanceDay(state));
   });
 });
+
+describe("tool bonus (D2)", () => {
+  it("an equipped tool adds +1 to woodcutting and mining", () => {
+    expect(dailyProduction([
+      dwarf({ id: "d1", assignment: "woodcutting", status: "working", hasTool: true }),
+      dwarf({ id: "d2", assignment: "mining", status: "working", hasTool: true }),
+    ])).toMatchObject({ wood: 4, stone: 3 });
+  });
+
+  it("without a tool there is no bonus", () => {
+    expect(dailyProduction([
+      dwarf({ id: "d1", assignment: "woodcutting", status: "working" }),
+    ]).wood).toBe(3);
+  });
+
+  it("a tool does not help on the Mushroom Farm", () => {
+    expect(dailyProduction([
+      dwarf({ id: "d1", assignment: "farming", status: "working", hasTool: true }),
+    ]).food).toBe(4);
+  });
+
+  it("no bonus while the dwarf is away", () => {
+    expect(dailyProduction([
+      dwarf({ id: "d1", assignment: "mining", status: "expedition", hasTool: true }),
+    ]).stone).toBe(0);
+  });
+
+  it("no bonus for a job halted by hunger", () => {
+    expect(dailyProduction([
+      dwarf({ id: "d1", assignment: "woodcutting", status: "working", hasTool: true }),
+    ], true).wood).toBe(0);
+  });
+
+  it("advanceDay applies the bonus", () => {
+    const state = colony({ dwarves: [dwarf({ assignment: "woodcutting", status: "working", hasTool: true })] });
+    expect(advanceDay(state).resources.wood).toBe(4);
+  });
+});

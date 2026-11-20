@@ -48,6 +48,20 @@ export function isHaltedByHunger(job: JobType, starving: boolean): boolean {
   return starving && job !== null && job !== "farming";
 }
 
+// D2: an equipped tool adds +1 unit of the assigned resource per day.
+// Team decision: tools (axe / pickaxe) only help woodcutting and mining,
+// not the Mushroom Farm.
+export const TOOL_BONUS = 1;
+export const TOOL_JOBS: Exclude<JobType, null>[] = ["woodcutting", "mining"];
+
+export function isToolCompatible(job: JobType): boolean {
+  return job !== null && TOOL_JOBS.includes(job);
+}
+
+export function getsToolBonus(dwarf: Dwarf): boolean {
+  return dwarf.hasTool && isToolCompatible(dwarf.assignment);
+}
+
 // Total production of one day. Used by advanceDay AND by the Shift Ledger,
 // so the UI always shows exactly what the simulation will apply.
 export function dailyProduction(dwarves: Dwarf[], starving = false): Resources {
@@ -57,9 +71,10 @@ export function dailyProduction(dwarves: Dwarf[], starving = false): Resources {
     if (!isProducing(dwarf) || dwarf.assignment === null) continue;
     if (isHaltedByHunger(dwarf.assignment, starving)) continue;
 
+    const bonus = getsToolBonus(dwarf) ? TOOL_BONUS : 0;
     const output = production[dwarf.assignment];
     for (const [resource, amount] of Object.entries(output)) {
-      total[resource as keyof Resources] += amount ?? 0;
+      total[resource as keyof Resources] += (amount ?? 0) + bonus;
     }
   }
 

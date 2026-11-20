@@ -1,9 +1,11 @@
 import {
   canChangeAssignment,
+  getsToolBonus,
   isAtHome,
   isHaltedByHunger,
   isProducing,
   jobLabel,
+  TOOL_BONUS,
 } from "../simulation";
 import type { Dwarf, JobType } from "../types";
 
@@ -71,6 +73,17 @@ export function DwarfRoster({
                 <p>
                   {dwarf.title} · {specialty}
                 </p>
+                {dwarf.hasTool && (
+                  <small
+                    className={
+                      getsToolBonus(dwarf) ? "tool-note" : "tool-note unused"
+                    }
+                  >
+                    {getsToolBonus(dwarf)
+                      ? `Tool: +${TOOL_BONUS} per day on this job`
+                      : "Tool has no use on this job"}
+                  </small>
+                )}
 
                 <select
                   value={dwarf.assignment ?? ""}
