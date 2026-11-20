@@ -11,13 +11,20 @@ export function isProducing(dwarf: Dwarf): boolean {
   return dwarf.assignment !== null && dwarf.status === "working";
 }
 
+// Team decision (D1 hunger rule): while the colony is starving, only the
+// Mushroom Farm keeps working – hungry dwarves have no strength for wood or stone.
+export function isHaltedByHunger(job: JobType, starving: boolean): boolean {
+  return starving && job !== null && job !== "farming";
+}
+
 // Total production of one day. Used by advanceDay AND by the Shift Ledger,
 // so the UI always shows exactly what the simulation will apply.
-export function dailyProduction(dwarves: Dwarf[]): Resources {
+export function dailyProduction(dwarves: Dwarf[], starving = false): Resources {
   const total: Resources = { wood: 0, stone: 0, food: 0, tools: 0 };
 
   for (const dwarf of dwarves) {
     if (!isProducing(dwarf) || dwarf.assignment === null) continue;
+    if (isHaltedByHunger(dwarf.assignment, starving)) continue;
 
     const output = production[dwarf.assignment];
     for (const [resource, amount] of Object.entries(output)) {
@@ -36,8 +43,13 @@ export function dailyMeals(dwarves: Dwarf[]): number {
   return dwarves.length * FOOD_PER_DWARF;
 }
 
+// One day of the colony, in a fixed order:
+// 1. production (if the colony is starving, only farmers produce)
+// 2. meals: if there is enough food, everyone eats and hunger ends;
+//    otherwise the remaining food is eaten, food becomes 0 (never negative)
+//    and the colony is starving for the next day.
 export function advanceDay(state: ColonyState): ColonyState {
-  const produced = dailyProduction(state.dwarves);
+  const produced = dailyProduction(state.dwarves, state.starving);
 
   const resources: Resources = {
     wood: state.resources.wood + produced.wood,
@@ -46,9 +58,11 @@ export function advanceDay(state: ColonyState): ColonyState {
     tools: state.resources.tools + produced.tools,
   };
 
-  resources.food = Math.max(0, resources.food - dailyMeals(state.dwarves));
+  const meals = dailyMeals(state.dwarves);
+  const starving = resources.food < meals;
+  resources.food = starving ? 0 : resources.food - meals;
 
-  return { ...state, day: state.day + 1, resources };
+  return { ...state, day: state.day + 1, resources, starving };
 }
 
 export const jobLabel = (job: JobType) => job ? ({

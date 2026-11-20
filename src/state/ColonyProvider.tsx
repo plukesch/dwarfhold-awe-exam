@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { beginExpedition } from "../api";
 import { advanceDay, jobLabel } from "../simulation";
 import type {
@@ -45,6 +45,7 @@ const initialState: ColonyState = {
       status: "idle",
     },
   ],
+  starving: false,
 };
 
 export function ColonyProvider({ children }: { children: ReactNode }) {
@@ -69,6 +70,28 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
 
     return () => window.clearInterval(timer);
   }, [paused]);
+
+  // Write a chronicle entry when hunger starts or ends. This is done here
+  // (and not inside advanceDay) because advanceDay must stay a pure function.
+  const wasStarving = useRef(colony.starving);
+  useEffect(() => {
+    if (colony.starving === wasStarving.current) return;
+    wasStarving.current = colony.starving;
+
+    setActivities((current) =>
+      [
+        {
+          id: crypto.randomUUID(),
+          day: colony.day,
+          message: colony.starving
+            ? "The stores are empty! Hungry dwarves only tend the Mushroom Farm."
+            : "Full bowls again. Stonehome is back to work.",
+          tone: colony.starving ? ("warning" as const) : ("good" as const),
+        },
+        ...current,
+      ].slice(0, 6),
+    );
+  }, [colony.starving, colony.day]);
 
   function assignDwarf(id: string, assignment: JobType) {
     setColony((current) => ({

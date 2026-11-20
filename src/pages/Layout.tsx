@@ -40,7 +40,22 @@ export function Layout() {
         <NavLink to="/forge">Forge</NavLink>
       </nav>
 
-      <ResourceBar resources={colony.resources} />
+      <ResourceBar resources={colony.resources} starving={colony.starving} />
+
+      {colony.starving && (
+        <section className="hunger-banner" role="alert">
+          <b>🍽️</b>
+          <div>
+            <strong>Stonehome is starving</strong>
+            <p>
+              Yesterday's meals could not be served. Until there is enough food
+              for everyone, only dwarves on the <em>Mushroom Farm</em> work –
+              woodcutting and mining are halted. Assign more farmers to recover.
+            </p>
+          </div>
+        </section>
+      )}
+
       <Outlet />
 
       <footer>

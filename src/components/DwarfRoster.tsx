@@ -1,18 +1,15 @@
-import { jobLabel } from "../simulation";
+import { isHaltedByHunger, isProducing, jobLabel } from "../simulation";
 import type { Dwarf, JobType } from "../types";
 
-const jobs: Exclude<JobType, null>[] = [
-  "woodcutting",
-  "mining",
-  "farming",
-];
+const jobs: Exclude<JobType, null>[] = ["woodcutting", "mining", "farming"];
 
 interface Props {
   dwarves: Dwarf[];
+  starving: boolean;
   onAssign: (id: string, job: JobType) => void;
 }
 
-export function DwarfRoster({ dwarves, onAssign }: Props) {
+export function DwarfRoster({ dwarves, starving, onAssign }: Props) {
   const presentDwarves = dwarves.filter(
     (dwarf) => dwarf.status !== "expedition",
   ).length;
@@ -32,15 +29,15 @@ export function DwarfRoster({ dwarves, onAssign }: Props) {
       <div className="dwarf-list">
         {dwarves.map((dwarf) => {
           const isAway = dwarf.status === "expedition";
+          // At work, but their job is halted because the colony is starving
+          const isHungry =
+            isProducing(dwarf) && isHaltedByHunger(dwarf.assignment, starving);
           const specialty = dwarf.specialty
             ? `Skilled in ${jobLabel(dwarf.specialty)}`
             : "Generalist";
 
           return (
-            <article
-              className={isAway ? "dwarf away" : "dwarf"}
-              key={dwarf.id}
-            >
+            <article className={isAway ? "dwarf away" : "dwarf"} key={dwarf.id}>
               <div className="portrait">
                 {dwarf.icon}
                 <i className={dwarf.status} />
@@ -56,10 +53,7 @@ export function DwarfRoster({ dwarves, onAssign }: Props) {
                   value={dwarf.assignment ?? ""}
                   disabled={isAway}
                   onChange={(event) =>
-                    onAssign(
-                      dwarf.id,
-                      (event.target.value || null) as JobType,
-                    )
+                    onAssign(dwarf.id, (event.target.value || null) as JobType)
                   }
                 >
                   <option value="">Unassigned</option>
@@ -71,7 +65,16 @@ export function DwarfRoster({ dwarves, onAssign }: Props) {
                 </select>
               </div>
 
-              <span className="status">{dwarf.status}</span>
+              {isHungry ? (
+                <span
+                  className="status hungry"
+                  title="Halted – the colony is starving"
+                >
+                  hungry
+                </span>
+              ) : (
+                <span className="status">{dwarf.status}</span>
+              )}
             </article>
           );
         })}

@@ -52,6 +52,13 @@ Commands: `npm install`, `npm run dev` (web + api), `npm test`, `npm run build`
 - Every new rule visible to the player gets a short explanation in the UI.
 - Keep it simple: the lecturers explicitly value understandable code over complexity.
 
+## Game rules already implemented
+
+- D1: only dwarves with a job AND status `working` produce (`isProducing`).
+  Everyone eats 1 ration/day, also on expeditions (`dailyMeals`).
+  `ColonyState.starving`: if meals can't be served, food = 0 and next day only
+  farmers produce (`isHaltedByHunger`). `starving` must be persisted (D5).
+
 ## Starter bugs we found (baseline)
 
 - `advanceDay` lets dwarves on expedition keep producing; food silently clamps to 0.
