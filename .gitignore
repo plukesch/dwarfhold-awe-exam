@@ -7,6 +7,9 @@ vite.config.d.ts
 *.log
 .DS_Store
 
+# Private learning notes (never pushed)
+docs_selberLernen/
+
 # AI tooling (local, per machine)
 .claude/
 CLAUDE.local.md
