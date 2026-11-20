@@ -13,10 +13,12 @@ export interface Dwarf {
      specialty?: Exclude<JobType, null> 
 }
 
-export interface ColonyState { 
-    day: number; 
-    resources: Resources; 
-    dwarves: Dwarf[] 
+export interface ColonyState {
+    day: number;
+    resources: Resources;
+    dwarves: Dwarf[];
+    // true if the last day's meals could not be served completely (D1 hunger rule)
+    starving: boolean;
 }
 
 export interface ExpeditionResult { 

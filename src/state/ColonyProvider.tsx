@@ -1,6 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { beginExpedition } from "../api";
-import { advanceDay, jobLabel } from "../simulation";
+import {
+  advanceDay,
+  assignJob,
+  canChangeAssignment,
+  jobLabel,
+} from "../simulation";
 import type {
   Activity,
   ColonyState,
@@ -45,6 +50,7 @@ const initialState: ColonyState = {
       status: "idle",
     },
   ],
+  starving: false,
 };
 
 export function ColonyProvider({ children }: { children: ReactNode }) {
@@ -70,27 +76,56 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     return () => window.clearInterval(timer);
   }, [paused]);
 
-  function assignDwarf(id: string, assignment: JobType) {
-    setColony((current) => ({
-      ...current,
-      dwarves: current.dwarves.map((dwarf) =>
-        dwarf.id === id
-          ? {
-              ...dwarf,
-              assignment,
-              status: assignment ? "working" : "idle",
-            }
-          : dwarf,
-      ),
-    }));
+  // Write a chronicle entry when hunger starts or ends. This is done here
+  // (and not inside advanceDay) because advanceDay must stay a pure function.
+  const wasStarving = useRef(colony.starving);
+  useEffect(() => {
+    if (colony.starving === wasStarving.current) return;
+    wasStarving.current = colony.starving;
 
-    const dwarf = colony.dwarves.find((item) => item.id === id);
     setActivities((current) =>
       [
         {
           id: crypto.randomUUID(),
           day: colony.day,
-          message: `${dwarf?.name ?? "A dwarf"} assigned to ${jobLabel(assignment)}.`,
+          message: colony.starving
+            ? "The stores are empty! Hungry dwarves only tend the Mushroom Farm."
+            : "Full bowls again. Stonehome is back to work.",
+          tone: colony.starving ? ("warning" as const) : ("good" as const),
+        },
+        ...current,
+      ].slice(0, 6),
+    );
+  }, [colony.starving, colony.day]);
+
+  function assignDwarf(id: string, assignment: JobType) {
+    const dwarf = colony.dwarves.find((item) => item.id === id);
+    if (!dwarf) return;
+
+    if (!canChangeAssignment(dwarf)) {
+      setActivities((current) =>
+        [
+          {
+            id: crypto.randomUUID(),
+            day: colony.day,
+            message: `${dwarf.name} is away and cannot take a new job right now.`,
+            tone: "warning" as const,
+          },
+          ...current,
+        ].slice(0, 6),
+      );
+      return;
+    }
+
+    // assignJob checks again on the *current* state, so even a click that
+    // races with an expedition departure cannot create a dwarf in two places.
+    setColony((current) => assignJob(current, id, assignment));
+    setActivities((current) =>
+      [
+        {
+          id: crypto.randomUUID(),
+          day: colony.day,
+          message: `${dwarf.name} assigned to ${jobLabel(assignment)}.`,
         },
         ...current,
       ].slice(0, 6),

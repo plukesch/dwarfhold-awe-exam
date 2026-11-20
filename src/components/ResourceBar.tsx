@@ -7,17 +7,24 @@ const details = {
   tools: ["⚒️", "Tools"],
 } as const;
 
-export function ResourceBar({ resources }: { resources: Resources }) {
+interface Props {
+  resources: Resources;
+  starving: boolean;
+}
+
+export function ResourceBar({ resources, starving }: Props) {
   return (
     <section className="resource-bar">
       {Object.entries(resources).map(([key, value]) => {
         const [icon, label] = details[key as keyof Resources];
+        // Highlight the food tile while the colony is starving
+        const alert = key === "food" && starving;
 
         return (
-          <article key={key}>
+          <article key={key} className={alert ? "alert" : undefined}>
             <span>{icon}</span>
             <div>
-              <small>{label}</small>
+              <small>{alert ? `${label} – starving!` : label}</small>
               <strong>{value}</strong>
             </div>
           </article>
