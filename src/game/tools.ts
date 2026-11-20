@@ -1,3 +1,4 @@
+import { isToolCompatible } from "../simulation";
 import { isAtHome } from "./dwarves";
 import type { ColonyState, Dwarf } from "../types";
 
@@ -6,8 +7,15 @@ import type { ColonyState, Dwarf } from "../types";
 // total number of tools never changes.
 // Tools can only be handed out or returned while the dwarf is at home.
 
+// A tool is only handed out to a dwarf whose job can use it
+// (woodcutting / mining) – no tools for farmers or dwarves without a job.
 export function canEquipTool(state: ColonyState, dwarf: Dwarf): boolean {
-  return isAtHome(dwarf) && !dwarf.hasTool && state.resources.tools > 0;
+  return (
+    isAtHome(dwarf) &&
+    !dwarf.hasTool &&
+    isToolCompatible(dwarf.assignment) &&
+    state.resources.tools > 0
+  );
 }
 
 export function canReturnTool(dwarf: Dwarf): boolean {

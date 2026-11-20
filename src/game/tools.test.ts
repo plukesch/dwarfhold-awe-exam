@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { ColonyState, Dwarf } from "../types";
+import { assignJob } from "../simulation";
 import { equipTool, equippedToolCount, returnTool } from "./tools";
 
 const dwarf = (overrides: Partial<Dwarf>): Dwarf => ({
-  id: "d1", name: "Brom", title: "", icon: "", assignment: null, status: "idle", hasTool: false, ...overrides,
+  id: "d1", name: "Brom", title: "", icon: "", assignment: "mining", status: "working", hasTool: false, ...overrides,
 });
 
 const colony = (tools: number, dwarves: Dwarf[]): ColonyState => ({
@@ -62,5 +63,32 @@ describe("tools (D2)", () => {
   it("returning without a tool changes nothing", () => {
     const state = colony(1, [dwarf({ id: "d1" })]);
     expect(returnTool(state, "d1")).toBe(state);
+  });
+});
+
+describe("tools only for compatible jobs (D2 fix)", () => {
+  it("a farmer cannot take a tool", () => {
+    const state = colony(1, [dwarf({ id: "d1", assignment: "farming" })]);
+    expect(equipTool(state, "d1")).toBe(state);
+  });
+
+  it("a dwarf without a job cannot take a tool", () => {
+    const state = colony(1, [dwarf({ id: "d1", assignment: null, status: "idle" })]);
+    expect(equipTool(state, "d1")).toBe(state);
+  });
+
+  it("switching to the farm returns the tool to the store automatically", () => {
+    const state = colony(0, [dwarf({ id: "d1", assignment: "mining", hasTool: true })]);
+    const next = assignJob(state, "d1", "farming");
+    expect(next.dwarves[0].hasTool).toBe(false);
+    expect(next.resources.tools).toBe(1);
+    expect(totalTools(next)).toBe(totalTools(state));
+  });
+
+  it("switching between woodcutting and mining keeps the tool", () => {
+    const state = colony(0, [dwarf({ id: "d1", assignment: "mining", hasTool: true })]);
+    const next = assignJob(state, "d1", "woodcutting");
+    expect(next.dwarves[0].hasTool).toBe(true);
+    expect(next.resources.tools).toBe(0);
   });
 });

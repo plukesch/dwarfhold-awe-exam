@@ -116,3 +116,33 @@ export function startForging(
     },
   };
 }
+
+// Finishes the running order once its day is reached (called by advanceDay):
+// the item goes into the store, the smith goes back to their job (or idle)
+// and the forge is free again. Nothing to finish -> unchanged state.
+export function finishForging(state: ColonyState): ColonyState {
+  const task = state.forgeTask;
+  if (!task || state.day < task.completesOnDay) return state;
+
+  const recipe = recipes[task.recipeId];
+  return {
+    ...state,
+    resources: {
+      ...state.resources,
+      [recipe.output]: state.resources[recipe.output] + 1,
+    },
+    dwarves: state.dwarves.map((dwarf) =>
+      dwarf.id === task.dwarfId
+        ? { ...dwarf, status: dwarf.assignment ? "working" : "idle" }
+        : dwarf,
+    ),
+    forgeTask: null,
+  };
+}
+
+// How many days until the running order is done (0 = finishes now).
+export function daysLeft(state: ColonyState): number {
+  return state.forgeTask
+    ? Math.max(0, state.forgeTask.completesOnDay - state.day)
+    : 0;
+}

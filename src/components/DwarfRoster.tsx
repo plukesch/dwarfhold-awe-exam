@@ -4,6 +4,7 @@ import {
   isAtHome,
   isHaltedByHunger,
   isProducing,
+  isToolCompatible,
   jobLabel,
   TOOL_BONUS,
 } from "../simulation";
@@ -126,9 +127,17 @@ export function DwarfRoster({
                 ) : (
                   <button
                     className="tool-button"
-                    disabled={!isAtHome(dwarf) || toolsInStore === 0}
+                    disabled={
+                      !isAtHome(dwarf) ||
+                      !isToolCompatible(dwarf.assignment) ||
+                      toolsInStore === 0
+                    }
                     title={
-                      toolsInStore === 0 ? "No tool in the store" : undefined
+                      !isToolCompatible(dwarf.assignment)
+                        ? "Tools only help woodcutters and miners"
+                        : toolsInStore === 0
+                          ? "No tool in the store"
+                          : undefined
                     }
                     onClick={() => onEquipTool(dwarf.id)}
                   >

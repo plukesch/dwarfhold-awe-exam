@@ -3,6 +3,7 @@ import { Chronicle } from "../components/Chronicle";
 import {
   canAfford,
   canForge,
+  daysLeft,
   isForgeFree,
   recipes,
   type Recipe,
@@ -47,14 +48,19 @@ export function ForgePage() {
               ⏳ <b>{taskSmith.name}</b> is forging a{" "}
               {recipes[task.recipeId].name.toLowerCase()}{" "}
               {recipes[task.recipeId].icon} – ready on{" "}
-              <b>day {task.completesOnDay}</b>.
+              <b>day {task.completesOnDay}</b> ({daysLeft(colony)}{" "}
+              {daysLeft(colony) === 1 ? "day" : "days"} left).
+              <progress
+                max={recipes[task.recipeId].days}
+                value={recipes[task.recipeId].days - daysLeft(colony)}
+              />
             </p>
           ) : (
             <>
               <p>
-                🔥 The forge is free. Stonehome has one forge, so only one
-                order can run at a time. Materials are taken when the work
-                starts; the smith stops their normal job until it is done.
+                🔥 The forge is free. Stonehome has one forge, so only one order
+                can run at a time. Materials are taken when the work starts; the
+                smith stops their normal job until it is done.
               </p>
               <label className="smith-select">
                 Smith

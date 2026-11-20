@@ -16,6 +16,7 @@ import {
   advanceDay,
   assignJob,
   canChangeAssignment,
+  isToolCompatible,
   jobLabel,
 } from "../simulation";
 import type { Activity, ColonyState, JobType, ResourceKey } from "../types";
@@ -110,6 +111,22 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     );
   }, [colony.starving, colony.day]);
 
+  // Chronicle entry when a forge order is finished (same idea as for hunger:
+  // advanceDay finishes the order, the effect only reports it).
+  const previousTask = useRef(colony.forgeTask);
+  useEffect(() => {
+    const finished = previousTask.current;
+    previousTask.current = colony.forgeTask;
+    if (!finished || colony.forgeTask !== null) return;
+
+    const recipe = recipes[finished.recipeId];
+    const smith = colony.dwarves.find((dwarf) => dwarf.id === finished.dwarfId);
+    log(
+      `${smith?.name ?? "The smith"} finished a ${recipe.name.toLowerCase()} ${recipe.icon} – it is now in the store.`,
+      "good",
+    );
+  }, [colony.forgeTask]);
+
   // Adds one entry to the Hold Chronicle (newest first, max. 6 entries).
   function log(message: string, tone?: Activity["tone"]) {
     setActivities((current) =>
@@ -136,6 +153,11 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     // races with an expedition departure cannot create a dwarf in two places.
     setColony((current) => assignJob(current, id, assignment));
     log(`${dwarf.name} assigned to ${jobLabel(assignment)}.`);
+    if (dwarf.hasTool && !isToolCompatible(assignment)) {
+      log(
+        `${dwarf.name} has no use for the tool there and returns it to the store.`,
+      );
+    }
   }
 
   function equipToolTo(id: string) {

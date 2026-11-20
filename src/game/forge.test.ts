@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ColonyState, Dwarf, Resources } from "../types";
-import { forgeProblem, missingMaterials, recipes, startForging } from "./forge";
+import { advanceDay } from "../simulation";
+import { daysLeft, finishForging, forgeProblem, missingMaterials, recipes, startForging } from "./forge";
 
 const dwarf = (overrides: Partial<Dwarf>): Dwarf => ({
   id: "d1", name: "Brom", title: "", icon: "", assignment: "mining", status: "working", hasTool: false, ...overrides,
@@ -62,5 +63,53 @@ describe("starting a forge order (D3)", () => {
   it("explains why an order cannot start", () => {
     expect(forgeProblem(colony({ wood: 0, stone: 5 }), "tool", "d1")).toMatch(/wood/);
     expect(forgeProblem(colony({ wood: 5, stone: 5 }), "tool", "d1")).toBeNull();
+  });
+});
+
+describe("finishing a forge order (D3)", () => {
+  const started = () => startForging(colony({ wood: 5, stone: 5 }), "tool", "d1"); // day 10, ready day 12
+
+  it("is not finished before the completion day", () => {
+    const state = { ...started(), day: 11 };
+    expect(finishForging(state)).toBe(state);
+  });
+
+  it("on the completion day: item in the store, smith back at work, forge free", () => {
+    const next = finishForging({ ...started(), day: 12 });
+    expect(next.resources.tools).toBe(1);
+    expect(next.dwarves[0].status).toBe("working"); // had a job -> back to it
+    expect(next.forgeTask).toBeNull();
+  });
+
+  it("a smith without a job becomes idle again", () => {
+    const state = startForging(colony({ wood: 5, stone: 5 }, [dwarf({ assignment: null, status: "idle" })]), "weapon", "d1");
+    const next = finishForging({ ...state, day: 13 });
+    expect(next.dwarves[0].status).toBe("idle");
+    expect(next.resources.weapons).toBe(1);
+  });
+
+  it("the item is added exactly once", () => {
+    const once = finishForging({ ...started(), day: 12 });
+    expect(finishForging(once)).toBe(once); // no task left -> nothing happens
+  });
+
+  it("daysLeft counts down", () => {
+    expect(daysLeft(started())).toBe(2);
+    expect(daysLeft({ ...started(), day: 11 })).toBe(1);
+  });
+});
+
+describe("forging over several days with advanceDay (D3)", () => {
+  it("tool started on day 10 is ready on day 12, the smith produces nothing meanwhile", () => {
+    let state = startForging(colony({ wood: 5, stone: 5, food: 50 }), "tool", "d1");
+    state = advanceDay(state); // day 11
+    expect(state.forgeTask).not.toBeNull();
+    expect(state.resources.stone).toBe(3); // miner is at the forge -> no stone
+    state = advanceDay(state); // day 12
+    expect(state.forgeTask).toBeNull();
+    expect(state.resources.tools).toBe(1);
+    expect(state.dwarves[0].status).toBe("working");
+    state = advanceDay(state); // day 13 -> mining again
+    expect(state.resources.stone).toBe(5);
   });
 });

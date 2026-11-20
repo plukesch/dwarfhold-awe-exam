@@ -20,7 +20,7 @@ So arbeiten wir größtenteils in verschiedenen Dateien.
 | Wer isst? | Jeder Zwerg isst 1 Ration pro Tag – auch auf Expedition, weil er sich seine Ration mitnimmt. | `dailyMeals` in `simulation.ts` |
 | Was passiert bei Hunger? | Reicht das Essen nicht, ist die Kolonie `starving` und am nächsten Tag arbeitet nur die Pilzfarm. Essen wird nie negativ. | `advanceDay`, `isHaltedByHunger` in `simulation.ts` |
 | Wie werden Tools gespeichert? | Keine einzelnen Tool-Objekte, sondern: `resources.tools` = Tools im Lager, `dwarf.hasTool` = Zwerg trägt eines. | `types.ts` |
-| Wobei hilft ein Tool? | +1 pro Tag, aber nur bei Woodcutting und Mining (Axt / Spitzhacke), nicht auf der Pilzfarm. | `getsToolBonus`, `TOOL_JOBS` in `simulation.ts` |
+| Wobei hilft ein Tool? | +1 pro Tag, aber nur bei Woodcutting und Mining (Axt / Spitzhacke). Nur Holzfäller und Miner können ein Tool nehmen. Wechselt ein Zwerg mit Tool auf die Farm oder wird unassigned, geht das Tool automatisch zurück ins Lager. | `getsToolBonus`, `canEquipTool`, `assignJob` |
 | Was kostet eine Waffe? | 2 Holz + 4 Stein. Steinlastiger als ein Tool, damit Mining für die Verteidigung wichtig wird. | `recipes` in `game/forge.ts` |
 | Wie lange dauert Schmieden? | Tool 2 Tage, Waffe 3 Tage. | `days` in `recipes` (`game/forge.ts`) |
 | Wie viele Aufträge gleichzeitig? | Nur einer – Stonehome hat genau eine Schmiede. | `forgeTask` in `types.ts` |
@@ -289,3 +289,67 @@ nochmal geprüft wird, kann ein Doppelklick nicht zweimal Material abziehen.
 
 Fertig wird ein Auftrag erst mit Schritt 3 – bis dahin bleibt der Zwerg in der
 Schmiede.
+
+### D3 – Schritt 3: Schmieden abschließen (Patrick)
+
+Jetzt wird ein Auftrag auch fertig.
+
+**`game/forge.ts`:** `finishForging(state)` schaut, ob ein Auftrag läuft und ob
+sein Tag erreicht ist. Wenn ja: Das Item kommt ins Lager, der Schmied geht zurück
+zu seinem Job (oder auf `idle`, wenn er keinen hatte), und `forgeTask` wird
+wieder `null`. Sonst kommt der State unverändert zurück. Weil der Auftrag dabei
+gelöscht wird, kann ein Item nicht zweimal gutgeschrieben werden.
+Dazu `daysLeft(state)` für die Anzeige.
+
+**`simulation.ts`:** `advanceDay` ruft am Ende `finishForging` für den neuen Tag
+auf. Damit läuft alles über die eine Tagesfunktion, genau wie Produktion und
+Essen. Ablauf am Beispiel Tool, gestartet an Tag 10:
+- Tag 10 → 11: Der Schmied produziert nichts für seinen Job, isst aber.
+- Tag 11 → 12: genauso, danach ist Tag 12 erreicht → Tool ins Lager, Schmied
+  zurück an die Arbeit.
+- Ab Tag 12 → 13 produziert er wieder normal.
+
+Hier hat sich der Umbau aus Schritt 2 (`isAtHome` in eigene Datei) ausgezahlt:
+`simulation.ts` importiert jetzt aus `forge.ts`, ohne dass es einen Kreis gibt.
+
+**Chronicle:** Wie beim Hunger merkt sich der Provider mit `useRef` den letzten
+Auftrag. Wird `forgeTask` von "Auftrag" zu `null`, schreibt ein `useEffect`
+"Bromli finished a weapon – it is now in the store". `advanceDay` bleibt dadurch
+eine pure Funktion ohne Seiteneffekte.
+
+**UI:** Auf der Forge-Seite steht jetzt zusätzlich, wie viele Tage noch fehlen,
+mit einem kleinen Fortschrittsbalken.
+
+Während eines Hungers wird übrigens weitergeschmiedet – Hunger stoppt laut
+unserer D1-Regel nur Holz und Stein, die Schmiede ist kein Job im Ledger.
+
+### D3 – Fazit
+
+D3 ist fertig. Schmieden braucht jetzt Material, einen freien Zwerg und Zeit
+(Tool 2, Waffe 3 Tage). Es gibt nur eine Schmiede und damit nur einen Auftrag
+gleichzeitig. Das Material geht beim Start weg, der Schmied arbeitet in der Zeit
+nicht in seinem Job, und am Ende landet das Item im Lager. Ein ungültiger Versuch
+ändert nichts, und im UI sieht man jederzeit, wer schmiedet und wann es fertig ist.
+
+### Fix: Tools auf der Farm und wachsender Roster (Patrick)
+
+Beim Testen sind zwei Fehler aufgefallen:
+
+**Farmer konnten ein Tool nehmen.** `canEquipTool` hat nur geprüft, ob ein Tool
+im Lager ist, ob der Zwerg schon eines hat und ob er zu Hause ist – aber nicht,
+ob sein Job das Tool überhaupt nutzen kann. Ein Farmer oder ein Zwerg ohne Job hat
+damit ein Tool blockiert, das ihm nichts bringt.
+- `canEquipTool` prüft jetzt zusätzlich `isToolCompatible(dwarf.assignment)`.
+  Der Button ist dann gesperrt und zeigt beim Drüberfahren "Tools only help
+  woodcutters and miners".
+- Wechselt ein Zwerg mit Tool auf die Farm oder wird unassigned, gibt `assignJob`
+  das Tool automatisch ans Lager zurück (mit Eintrag in der Chronicle). Zwischen
+  Holz und Stein behält er es. So bleibt kein Tool ungenutzt bei jemandem liegen.
+
+**Der Roster wurde immer länger.** Jede Tool-Aktion schreibt einen Eintrag in die
+Chronicle, die rechte Spalte wird dadurch höher. Das Dashboard ist ein CSS-Grid,
+und dort werden alle Spalten standardmäßig auf dieselbe Höhe gezogen – der Roster
+wurde also mitgestreckt. Mit `align-items: start` behält jedes Panel seine eigene
+Höhe. Außerdem hat die Status-Spalte im Roster jetzt eine feste Breite, damit das
+Dropdown nicht springt, wenn der Status zwischen IDLE, WORKING und CRAFTING
+wechselt.
