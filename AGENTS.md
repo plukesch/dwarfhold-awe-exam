@@ -10,7 +10,7 @@ every line they own – so keep code simple and readable.
 
 | Area | Owner | Requirements | Main files |
 |---|---|---|---|
-| Colony work, tools, forge | Patrick | D1, D2, D3 | `src/simulation.ts`, `src/game/forge.ts`, `src/game/tools.ts`, `src/pages/ForgePage.tsx`, `src/components/DwarfRoster.tsx` |
+| Colony work, tools, forge | Patrick | D1, D2, D3 | `src/simulation.ts`, `src/game/forge.ts`, `src/game/tools.ts`, `src/pages/ForgePage.tsx`, `src/components/DwarfRoster.tsx`, Shift Ledger in `ColonyPage.tsx` |
 | Expeditions, persistence, raids | Omar | D4, D5, D7 | `src/game/expeditions.ts`, `src/game/persistence.ts`, `src/game/raid.ts`, `server/index.js`, `src/api.ts`, expedition panel |
 | New species | both | D6 | Omar: joining via expedition + save; Patrick: production/crafting rules + UI |
 | Quality goals, diary | both | – | `docs/QUALITY.md`, `docs/DEVLOG.md` |
@@ -21,12 +21,12 @@ and mention it in the PR.
 ## Git workflow (important)
 
 - `main` is the integration branch. **Never commit directly to `main`.**
-- One branch per requirement: `feature/d1-colony-survival`, `feature/d2-tools`,
-  `feature/d3-crafting-time`, `feature/d4-expeditions`, `feature/d5-save-restore`,
-  `feature/d6-new-species`, `feature/d7-raids`. Setup/docs: `chore/...`, fixes: `fix/...`.
-- Small, meaningful commits (English, imperative: `Add food shortage penalty`).
+- One branch per requirement, named exactly like the requirement: `D1`, `D2`,
+  `D3`, `D4`, `D5`, `D6`, `D7`. Setup/docs: `chore/...`, fixes: `fix/...`.
+- Inside a branch: one commit per sub-problem (e.g. D1 has several steps).
+- Small, meaningful commits, messages in **German** (e.g. `Hunger-Konsequenz bei Essensmangel hinzugefügt`).
 - Merge into `main` via Pull Request on GitHub; the other person skims/approves.
-- Before starting work: `git switch main && git pull`, then branch off.
+- Before starting work: `git checkout main`, `git pull`, then `git checkout -b D<n>`.
 - **Agents do not commit or push.** The humans commit and push themselves.
 
 ## Tech stack

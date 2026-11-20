@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { Chronicle } from "../components/Chronicle";
 import { DwarfRoster } from "../components/DwarfRoster";
-import { jobLabel, production } from "../simulation";
+import { dailyProduction, isProducing, jobLabel, production } from "../simulation";
 import { useColony } from "../state/ColonyContext";
-import type { ResourceKey } from "../types";
 
 export function ColonyPage() {
   const {
@@ -16,23 +15,9 @@ export function ColonyPage() {
   const [destination, setDestination] = useState("crystal-cave");
   const [expeditionDwarf, setExpeditionDwarf] = useState("dwarf-3");
 
-  const dailyOutput = colony.dwarves.reduce<Record<ResourceKey, number>>(
-    (total, dwarf) => {
-      if (dwarf.assignment) {
-        const output = production[dwarf.assignment];
-        Object.entries(output).forEach(([resource, amount]) => {
-          total[resource as ResourceKey] += amount ?? 0;
-        });
-      }
-      return total;
-    },
-    {
-      wood: 0,
-      stone: 0,
-      food: -colony.dwarves.length,
-      tools: 0,
-    },
-  );
+  // Same calculation as the simulation uses -> ledger and reality always match.
+  const produced = dailyProduction(colony.dwarves);
+  const netFood = produced.food - colony.dwarves.length;
 
   return (
     <div className="dashboard">
@@ -62,10 +47,10 @@ export function ColonyPage() {
                 <p>
                   {
                     colony.dwarves.filter(
-                      (dwarf) => dwarf.assignment === job,
+                      (dwarf) => dwarf.assignment === job && isProducing(dwarf),
                     ).length
                   }{" "}
-                  assigned
+                  at work
                 </p>
                 <strong>+{Object.values(production[job])[0]} / day</strong>
               </article>
@@ -74,9 +59,9 @@ export function ColonyPage() {
 
           <div className="net-line">
             <span>NET FOOD AFTER MEALS</span>
-            <strong className={dailyOutput.food >= 0 ? "gain" : "loss"}>
-              {dailyOutput.food >= 0 ? "+" : ""}
-              {dailyOutput.food}
+            <strong className={netFood >= 0 ? "gain" : "loss"}>
+              {netFood >= 0 ? "+" : ""}
+              {netFood}
             </strong>
           </div>
         </section>
