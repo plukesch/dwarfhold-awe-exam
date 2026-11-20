@@ -6,3 +6,7 @@ vite.config.d.ts
 .env
 *.log
 .DS_Store
+
+# AI tooling (local, per machine)
+.claude/
+CLAUDE.local.md
