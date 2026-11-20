@@ -28,6 +28,14 @@ export function dailyProduction(dwarves: Dwarf[]): Resources {
   return total;
 }
 
+// Team decision: EVERY dwarf eats 1 ration per day – including dwarves on an
+// expedition, because they pack their ration from the hold before leaving.
+export const FOOD_PER_DWARF = 1;
+
+export function dailyMeals(dwarves: Dwarf[]): number {
+  return dwarves.length * FOOD_PER_DWARF;
+}
+
 export function advanceDay(state: ColonyState): ColonyState {
   const produced = dailyProduction(state.dwarves);
 
@@ -38,7 +46,7 @@ export function advanceDay(state: ColonyState): ColonyState {
     tools: state.resources.tools + produced.tools,
   };
 
-  resources.food = Math.max(0, resources.food - state.dwarves.length);
+  resources.food = Math.max(0, resources.food - dailyMeals(state.dwarves));
 
   return { ...state, day: state.day + 1, resources };
 }

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Chronicle } from "../components/Chronicle";
 import { DwarfRoster } from "../components/DwarfRoster";
-import { dailyProduction, isProducing, jobLabel, production } from "../simulation";
+import { dailyMeals, dailyProduction, isProducing, jobLabel, production } from "../simulation";
 import { useColony } from "../state/ColonyContext";
 
 export function ColonyPage() {
@@ -17,7 +17,8 @@ export function ColonyPage() {
 
   // Same calculation as the simulation uses -> ledger and reality always match.
   const produced = dailyProduction(colony.dwarves);
-  const netFood = produced.food - colony.dwarves.length;
+  const meals = dailyMeals(colony.dwarves);
+  const netFood = produced.food - meals;
 
   return (
     <div className="dashboard">
@@ -64,6 +65,10 @@ export function ColonyPage() {
               {netFood}
             </strong>
           </div>
+          <p className="rule-note">
+            Every dwarf eats 1 ration per day ({meals} total) – also dwarves on
+            an expedition, because they pack their ration before leaving.
+          </p>
         </section>
       </section>
 

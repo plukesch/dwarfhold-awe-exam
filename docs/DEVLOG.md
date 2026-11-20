@@ -17,6 +17,7 @@ und State. So arbeiten wir größtenteils in verschiedenen Dateien.
 | Thema | Entscheidung | Wo im Code |
 |---|---|---|
 | Wer produziert? | Nur Zwerge mit Job **und** Status `working`. Wer auf Expedition ist, behält den Job, produziert aber nicht. | `isProducing` in `simulation.ts` |
+| Wer isst? | Jeder Zwerg isst 1 Ration pro Tag – **auch auf Expedition**, weil er sich seine Ration aus dem Lager mitnimmt. So bleibt der Verbrauch vorhersehbar und eine Expedition ist kein Trick, um Essen zu sparen. | `dailyMeals` in `simulation.ts`, Hinweis im Shift Ledger |
 
 ## Log
 
@@ -50,3 +51,15 @@ und State. So arbeiten wir größtenteils in verschiedenen Dateien.
   Essen – das ist Schritt 2 (Hunger-Konsequenz).
 - Tests: Zwerg auf Expedition produziert nicht; `dailyProduction` zählt nur
   Arbeitende. Hilfsfunktion `dwarf({...})` hält die Testdaten kurz.
+
+### D1 – Schritt 2: Essensverbrauch festgelegt (Patrick)
+- Entscheidung im Team: Auch Zwerge auf Expedition essen 1 Ration pro Tag –
+  sie nehmen sich ihr Essen für den Weg mit. Das war im Starter zufällig schon
+  so (`state.dwarves.length`), jetzt ist es eine bewusste, sichtbare Regel.
+- `simulation.ts`: Konstante `FOOD_PER_DWARF` und Funktion `dailyMeals(dwarves)`.
+  `advanceDay` und der Shift Ledger verwenden beide `dailyMeals` (gleiches Prinzip
+  wie bei `dailyProduction`: eine Regel, eine Stelle).
+- UI: kurzer Hinweis unter "Net food after meals", der die Regel erklärt
+  (neue CSS-Klasse `.rule-note`, wiederverwendbar für weitere Regel-Hinweise).
+- Test: Zwerg auf Expedition isst trotzdem mit (10 Essen, 2 Zwerge → 8).
+- Offen für Schritt 3: Was passiert, wenn das Essen nicht reicht.

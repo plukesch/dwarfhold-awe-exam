@@ -27,6 +27,18 @@ describe("colony simulation", () => {
     expect(next.resources.stone).toBe(2);
   });
 
+  it("dwarves on an expedition still eat their ration", () => {
+    const state: ColonyState = {
+      day: 1,
+      resources: { wood: 0, stone: 0, food: 10, tools: 0 },
+      dwarves: [
+        dwarf({ id: "d1", status: "expedition" }),
+        dwarf({ id: "d2", status: "idle" }),
+      ],
+    };
+    expect(advanceDay(state).resources.food).toBe(8);
+  });
+
   it("dailyProduction only counts dwarves that are at work", () => {
     expect(dailyProduction([
       dwarf({ id: "d1", assignment: "farming", status: "working" }),
