@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { beginExpedition } from "../api";
-import { craft, missingMaterials, recipes, type RecipeId } from "../game/forge";
+import {
+  forgeProblem,
+  recipes,
+  startForging,
+  type RecipeId,
+} from "../game/forge";
 import {
   canEquipTool,
   canReturnTool,
@@ -11,6 +16,7 @@ import {
   advanceDay,
   assignJob,
   canChangeAssignment,
+  isToolCompatible,
   jobLabel,
 } from "../simulation";
 import type { Activity, ColonyState, JobType, ResourceKey } from "../types";
@@ -57,6 +63,7 @@ const initialState: ColonyState = {
     },
   ],
   starving: false,
+  forgeTask: null,
 };
 
 export function ColonyProvider({ children }: { children: ReactNode }) {
@@ -104,6 +111,22 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     );
   }, [colony.starving, colony.day]);
 
+  // Chronicle entry when a forge order is finished (same idea as for hunger:
+  // advanceDay finishes the order, the effect only reports it).
+  const previousTask = useRef(colony.forgeTask);
+  useEffect(() => {
+    const finished = previousTask.current;
+    previousTask.current = colony.forgeTask;
+    if (!finished || colony.forgeTask !== null) return;
+
+    const recipe = recipes[finished.recipeId];
+    const smith = colony.dwarves.find((dwarf) => dwarf.id === finished.dwarfId);
+    log(
+      `${smith?.name ?? "The smith"} finished a ${recipe.name.toLowerCase()} ${recipe.icon} – it is now in the store.`,
+      "good",
+    );
+  }, [colony.forgeTask]);
+
   // Adds one entry to the Hold Chronicle (newest first, max. 6 entries).
   function log(message: string, tone?: Activity["tone"]) {
     setActivities((current) =>
@@ -130,6 +153,11 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     // races with an expedition departure cannot create a dwarf in two places.
     setColony((current) => assignJob(current, id, assignment));
     log(`${dwarf.name} assigned to ${jobLabel(assignment)}.`);
+    if (dwarf.hasTool && !isToolCompatible(assignment)) {
+      log(
+        `${dwarf.name} has no use for the tool there and returns it to the store.`,
+      );
+    }
   }
 
   function equipToolTo(id: string) {
@@ -159,24 +187,21 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     log(`${dwarf.name} returns the tool to the store.`);
   }
 
-  function forge(recipeId: RecipeId) {
-    const recipe = recipes[recipeId];
-    const missing = missingMaterials(colony.resources, recipe);
-
-    if (missing.length > 0) {
-      log(
-        `The forge needs more ${missing.join(" and ")} for a ${recipe.name.toLowerCase()}.`,
-        "warning",
-      );
+  function forge(recipeId: RecipeId, dwarfId: string) {
+    const problem = forgeProblem(colony, recipeId, dwarfId);
+    if (problem) {
+      log(problem, "warning");
       return;
     }
 
-    // craft checks again on the current state -> nothing can go negative,
-    // even if two clicks arrive before React re-renders.
-    setColony((current) => craft(current, recipeId));
+    const recipe = recipes[recipeId];
+    const dwarf = colony.dwarves.find((item) => item.id === dwarfId);
+
+    // startForging checks again on the current state -> a double click cannot
+    // start two orders or pay the materials twice.
+    setColony((current) => startForging(current, recipeId, dwarfId));
     log(
-      `A new ${recipe.name.toLowerCase()} ${recipe.icon} joins the stores.`,
-      "good",
+      `${dwarf?.name} starts forging a ${recipe.name.toLowerCase()} ${recipe.icon} – ready on day ${colony.day + recipe.days}.`,
     );
   }
 

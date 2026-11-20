@@ -62,11 +62,24 @@ Commands: `npm install`, `npm run dev` (web + api), `npm test`, `npm run build`
   (`canChangeAssignment`). New busy statuses (crafting, …) are blocked automatically.
 - D2: `resources.tools` = tools in the store only; `dwarf.hasTool` = carries one.
   Total tools = store + dwarves with `hasTool`. `resources.weapons` = colony stock
-  (used by D7). Tool bonus only for woodcutting/mining. Weapon = 2 wood + 4 stone.
+  (used by D7). Tool bonus only for woodcutting/mining; only woodcutters/miners can
+  equip one, and `assignJob` auto-returns the tool when switching to farming/none.
+  Weapon = 2 wood + 4 stone.
   `hasTool` and `weapons` must be persisted (D5).
   Tool logic: `src/game/tools.ts` (`equipTool`, `returnTool`). Tool bonus:
   `getsToolBonus` in `simulation.ts`. Forge: `src/game/forge.ts` (`recipes`,
   `craft`), provider action `forge(recipeId)` (replaces old `craftTool`).
+- D3: status `crafting`; `ColonyState.forgeTask` (`{ recipeId, dwarfId,
+  completesOnDay }` or `null`) – only ONE order at a time. Tool 2 days, weapon
+  3 days (`recipes[..].days`). Materials are paid at the start. `forgeTask` must
+  be persisted (D5). Start an order with `startForging` (`game/forge.ts`), the
+  old instant `craft` is gone. `isAtHome` lives in `game/dwarves.ts`.
+  `advanceDay` calls `finishForging` for the new day (item into store, smith back
+  to job, `forgeTask = null`). Chronicle entry comes from a `useEffect` in the
+  provider. **For D5 (Omar):** decide what happens to a restored `forgeTask`.
+- **For D4 (Omar):** only dwarves with `isAtHome(dwarf)` may be sent on an
+  expedition – a `crafting` dwarf must not leave (currently not checked in
+  `sendExpedition`).
 - Provider helper `log(message, tone)` adds a chronicle entry – use it instead of
   writing `setActivities(...)` by hand.
 

@@ -4,6 +4,7 @@ import {
   isAtHome,
   isHaltedByHunger,
   isProducing,
+  isToolCompatible,
   jobLabel,
   TOOL_BONUS,
 } from "../simulation";
@@ -109,6 +110,11 @@ export function DwarfRoster({
                     Job paused while away – resumes on return
                   </small>
                 )}
+                {dwarf.status === "crafting" && (
+                  <small className="job-paused">
+                    🔨 At the forge – job paused until the item is done
+                  </small>
+                )}
 
                 {dwarf.hasTool ? (
                   <button
@@ -121,9 +127,17 @@ export function DwarfRoster({
                 ) : (
                   <button
                     className="tool-button"
-                    disabled={!isAtHome(dwarf) || toolsInStore === 0}
+                    disabled={
+                      !isAtHome(dwarf) ||
+                      !isToolCompatible(dwarf.assignment) ||
+                      toolsInStore === 0
+                    }
                     title={
-                      toolsInStore === 0 ? "No tool in the store" : undefined
+                      !isToolCompatible(dwarf.assignment)
+                        ? "Tools only help woodcutters and miners"
+                        : toolsInStore === 0
+                          ? "No tool in the store"
+                          : undefined
                     }
                     onClick={() => onEquipTool(dwarf.id)}
                   >

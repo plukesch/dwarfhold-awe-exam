@@ -30,3 +30,20 @@
 /* D2 forge: one panel per recipe */
 .forge-recipes{display:grid;gap:15px}
 .recipe button:disabled{opacity:.45;cursor:not-allowed}
+
+/* D3 forge as colony work */
+.portrait i.crafting{background:#e0703a}
+.forge-status{padding:12px 17px}
+.forge-status p{margin:4px 0 0;font:13px Barlow Condensed;color:#c9b28f}
+.recipe-days{margin-left:6px;color:#967f64}
+.forge-status p.busy{color:#f0b070}
+.smith-select{display:flex;align-items:center;gap:10px;margin-top:10px;font:600 11px Barlow Condensed;letter-spacing:.08em;text-transform:uppercase;color:#aa8b63}
+.smith-select select{background:#100e0b;color:#d8c8ae;border:1px solid #4d3f30;padding:5px}
+.forge-status progress{display:block;width:100%;height:8px;margin-top:8px;accent-color:#d9a34f}
+
+/* Layout fix: panels keep their own height (the chronicle growing must not
+   stretch the roster), and the status badge column has a fixed width so the
+   job dropdown does not change size between IDLE / WORKING / CRAFTING. */
+.dashboard{align-items:start}
+.dwarf{grid-template-columns:61px 1fr 70px}
+.dwarf .status{justify-self:end}

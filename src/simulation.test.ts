@@ -11,6 +11,7 @@ const colony = (overrides: Partial<ColonyState>): ColonyState => ({
   resources: { wood: 0, stone: 0, food: 10, tools: 0, weapons: 0 },
   dwarves: [],
   starving: false,
+  forgeTask: null,
   ...overrides,
 });
 
@@ -155,5 +156,22 @@ describe("tool bonus (D2)", () => {
   it("advanceDay applies the bonus", () => {
     const state = colony({ dwarves: [dwarf({ assignment: "woodcutting", status: "working", hasTool: true })] });
     expect(advanceDay(state).resources.wood).toBe(4);
+  });
+});
+
+describe("crafting status (D3 step 1)", () => {
+  const smith = dwarf({ id: "d1", assignment: "mining", status: "crafting", hasTool: true });
+
+  it("a crafting dwarf produces nothing for their job (not even with a tool)", () => {
+    expect(dailyProduction([smith]).stone).toBe(0);
+  });
+
+  it("a crafting dwarf cannot change their job", () => {
+    const state = colony({ dwarves: [smith] });
+    expect(assignJob(state, "d1", "farming")).toBe(state);
+  });
+
+  it("a crafting dwarf still eats", () => {
+    expect(advanceDay(colony({ dwarves: [smith] })).resources.food).toBe(9);
   });
 });
