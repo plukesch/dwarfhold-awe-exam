@@ -7,6 +7,7 @@ const colony = (resources: Partial<Resources>): ColonyState => ({
   resources: { wood: 0, stone: 0, food: 10, tools: 0, weapons: 0, ...resources },
   dwarves: [],
   starving: false,
+  forgeTask: null,
 });
 
 describe("forge recipes (D2)", () => {

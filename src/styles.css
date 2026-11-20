@@ -30,3 +30,9 @@
 /* D2 forge: one panel per recipe */
 .forge-recipes{display:grid;gap:15px}
 .recipe button:disabled{opacity:.45;cursor:not-allowed}
+
+/* D3 forge as colony work */
+.portrait i.crafting{background:#e0703a}
+.forge-status{padding:12px 17px}
+.forge-status p{margin:4px 0 0;font:13px Barlow Condensed;color:#c9b28f}
+.recipe-days{margin-left:6px;color:#967f64}

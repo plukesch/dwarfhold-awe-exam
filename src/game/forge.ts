@@ -1,6 +1,11 @@
-import type { ColonyState, ResourceKey, Resources } from "../types";
+import type {
+  ColonyState,
+  RecipeId,
+  ResourceKey,
+  Resources,
+} from "../types";
 
-export type RecipeId = "tool" | "weapon";
+export type { RecipeId };
 
 export interface Recipe {
   id: RecipeId;
@@ -8,10 +13,13 @@ export interface Recipe {
   icon: string;
   cost: Partial<Resources>;
   output: ResourceKey; // the forged item goes into this store
+  days: number; // how many days the forging takes (D3)
 }
 
-// All forge recipes in one place. Team decision: a weapon costs 2 wood + 4 stone
-// (more stone than a tool, so mining matters for the colony's defense in D7).
+// All forge recipes in one place. Team decisions:
+// - a weapon costs 2 wood + 4 stone (more stone than a tool, so mining matters
+//   for the colony's defense in D7)
+// - a tool takes 2 days, a weapon 3 days at the forge
 export const recipes: Record<RecipeId, Recipe> = {
   tool: {
     id: "tool",
@@ -19,6 +27,7 @@ export const recipes: Record<RecipeId, Recipe> = {
     icon: "⚒️",
     cost: { wood: 3, stone: 2 },
     output: "tools",
+    days: 2,
   },
   weapon: {
     id: "weapon",
@@ -26,8 +35,13 @@ export const recipes: Record<RecipeId, Recipe> = {
     icon: "🗡️",
     cost: { wood: 2, stone: 4 },
     output: "weapons",
+    days: 3,
   },
 };
+
+export function isForgeFree(state: ColonyState): boolean {
+  return state.forgeTask === null;
+}
 
 // Which materials are missing? Empty list = the colony can afford the recipe.
 export function missingMaterials(

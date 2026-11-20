@@ -57,6 +57,7 @@ const initialState: ColonyState = {
     },
   ],
   starving: false,
+  forgeTask: null,
 };
 
 export function ColonyProvider({ children }: { children: ReactNode }) {

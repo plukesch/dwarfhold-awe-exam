@@ -67,6 +67,10 @@ Commands: `npm install`, `npm run dev` (web + api), `npm test`, `npm run build`
   Tool logic: `src/game/tools.ts` (`equipTool`, `returnTool`). Tool bonus:
   `getsToolBonus` in `simulation.ts`. Forge: `src/game/forge.ts` (`recipes`,
   `craft`), provider action `forge(recipeId)` (replaces old `craftTool`).
+- D3: status `crafting`; `ColonyState.forgeTask` (`{ recipeId, dwarfId,
+  completesOnDay }` or `null`) – only ONE order at a time. Tool 2 days, weapon
+  3 days (`recipes[..].days`). Materials are paid at the start. `forgeTask` must
+  be persisted (D5).
 - Provider helper `log(message, tone)` adds a chronicle entry – use it instead of
   writing `setActivities(...)` by hand.
 

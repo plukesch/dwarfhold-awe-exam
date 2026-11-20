@@ -1,5 +1,5 @@
 import { Chronicle } from "../components/Chronicle";
-import { canAfford, recipes, type Recipe } from "../game/forge";
+import { canAfford, isForgeFree, recipes, type Recipe } from "../game/forge";
 import { useColony } from "../state/ColonyContext";
 
 const materialIcon = {
@@ -21,6 +21,15 @@ export function ForgePage() {
   return (
     <div className="forge-layout">
       <div className="forge-recipes">
+        <section className="panel forge-status">
+          <small>THE ANVIL</small>
+          <p>
+            {isForgeFree(colony)
+              ? "🔥 The forge is free. Stonehome has one forge, so only one order can run at a time."
+              : "⏳ The forge is busy with an order."}
+          </p>
+        </section>
+
         {Object.values(recipes).map((recipe) => {
           const affordable = canAfford(colony.resources, recipe);
 
@@ -43,6 +52,7 @@ export function ForgePage() {
                 )}
                 <i>→</i>
                 <span>1 {recipe.icon}</span>
+                <span className="recipe-days">⏱ {recipe.days} days</span>
                 <button
                   disabled={!affordable}
                   title={affordable ? undefined : "Not enough materials"}

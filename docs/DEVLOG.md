@@ -22,6 +22,9 @@ So arbeiten wir größtenteils in verschiedenen Dateien.
 | Wie werden Tools gespeichert? | Keine einzelnen Tool-Objekte, sondern: `resources.tools` = Tools im Lager, `dwarf.hasTool` = Zwerg trägt eines. | `types.ts` |
 | Wobei hilft ein Tool? | +1 pro Tag, aber nur bei Woodcutting und Mining (Axt / Spitzhacke), nicht auf der Pilzfarm. | `getsToolBonus`, `TOOL_JOBS` in `simulation.ts` |
 | Was kostet eine Waffe? | 2 Holz + 4 Stein. Steinlastiger als ein Tool, damit Mining für die Verteidigung wichtig wird. | `recipes` in `game/forge.ts` |
+| Wie lange dauert Schmieden? | Tool 2 Tage, Waffe 3 Tage. | `days` in `recipes` (`game/forge.ts`) |
+| Wie viele Aufträge gleichzeitig? | Nur einer – Stonehome hat genau eine Schmiede. | `forgeTask` in `types.ts` |
+| Wann wird das Material abgezogen? | Beim Start. Der Zwerg holt sich die Materialien aus dem Lager und geht damit zur Schmiede. | kommt in D3 Schritt 2 |
 
 ## Log
 
@@ -208,3 +211,36 @@ wird. Die Forge hat jetzt zusätzlich ein Waffenrezept, und Schmieden mit zu wen
 Material ändert nichts mehr.
 
 wird beim nächsten commit rausgenommen, nur drinnen damit push einheitlich wird weil ich vorher etwas verkackt habe 
+
+### D3 – Schritt 1: Datenmodell für Schmiede-Aufträge (Patrick)
+
+D3 verlangt, dass Schmieden Material, einen Zwerg und Zeit braucht. Bisher war
+ein Tool sofort fertig. Bevor wir das umbauen, braucht der State die Infos dafür.
+
+Unsere Entscheidungen dazu:
+- Ein Tool dauert 2 Tage, eine Waffe 3 Tage.
+- Es läuft immer nur ein Auftrag, weil Stonehome nur eine Schmiede hat.
+- Das Material wird beim Start abgezogen: Der Zwerg holt sich die Sachen aus dem
+  Lager und geht damit zur Schmiede. So kann das Material während der Arbeit
+  auch nicht für etwas anderes verwendet werden.
+
+Was im Code dazugekommen ist:
+- `types.ts`: neuer Status `crafting` für Zwerge. Neues Interface `ForgeTask` mit
+  Rezept, Zwerg und dem Tag, an dem es fertig ist (`completesOnDay`). Im
+  `ColonyState` gibt es `forgeTask` – `null` heißt, die Schmiede ist frei. Weil es
+  nur ein Feld und keine Liste ist, kann es gar nicht zwei Aufträge geben.
+- `RecipeId` ist von `game/forge.ts` nach `types.ts` gewandert, weil `ForgeTask`
+  den Typ braucht und `types.ts` sonst aus der Spiellogik importieren müsste.
+- `game/forge.ts`: Jedes Rezept hat jetzt `days`. Dazu `isForgeFree(state)`.
+
+Der neue Status passt automatisch zu den Regeln aus D1 und D2, weil dort nur
+`idle` und `working` als "zu Hause" gelten: Ein schmiedender Zwerg produziert
+nichts für seinen Job, kann den Job nicht wechseln und kein Tool tauschen.
+Essen tut er trotzdem.
+
+UI: Auf der Forge-Seite steht oben, ob die Schmiede frei ist, und bei jedem Rezept
+die Dauer. Im Footer steht statt dem fixen "Forge: burning" jetzt "free" bzw.
+"in use". Der Status-Punkt beim Zwergenbild hat für `crafting` eine eigene Farbe.
+
+Geschmiedet wird in diesem Schritt noch sofort – das Starten mit Zwerg und Dauer
+kommt in Schritt 2.
