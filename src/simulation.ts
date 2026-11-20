@@ -46,7 +46,7 @@ export function isHaltedByHunger(job: JobType, starving: boolean): boolean {
 // Total production of one day. Used by advanceDay AND by the Shift Ledger,
 // so the UI always shows exactly what the simulation will apply.
 export function dailyProduction(dwarves: Dwarf[], starving = false): Resources {
-  const total: Resources = { wood: 0, stone: 0, food: 0, tools: 0 };
+  const total: Resources = { wood: 0, stone: 0, food: 0, tools: 0, weapons: 0 };
 
   for (const dwarf of dwarves) {
     if (!isProducing(dwarf) || dwarf.assignment === null) continue;
@@ -82,6 +82,7 @@ export function advanceDay(state: ColonyState): ColonyState {
     stone: state.resources.stone + produced.stone,
     food: state.resources.food + produced.food,
     tools: state.resources.tools + produced.tools,
+    weapons: state.resources.weapons + produced.weapons,
   };
 
   const meals = dailyMeals(state.dwarves);

@@ -4,7 +4,8 @@ const details = {
   wood: ["🪵", "Timber"],
   stone: ["🪨", "Stone"],
   food: ["🍄", "Rations"],
-  tools: ["⚒️", "Tools"],
+  tools: ["⚒️", "Tools in store"],
+  weapons: ["🗡️", "Weapons"],
 } as const;
 
 interface Props {

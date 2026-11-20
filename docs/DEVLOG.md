@@ -19,6 +19,9 @@ So arbeiten wir größtenteils in verschiedenen Dateien.
 | Wer produziert? | Nur Zwerge mit Job **und** Status `working`. Wer auf Expedition ist, behält den Job, produziert aber nicht. | `isProducing` in `simulation.ts` |
 | Wer isst? | Jeder Zwerg isst 1 Ration pro Tag – auch auf Expedition, weil er sich seine Ration mitnimmt. | `dailyMeals` in `simulation.ts` |
 | Was passiert bei Hunger? | Reicht das Essen nicht, ist die Kolonie `starving` und am nächsten Tag arbeitet nur die Pilzfarm. Essen wird nie negativ. | `advanceDay`, `isHaltedByHunger` in `simulation.ts` |
+| Wie werden Tools gespeichert? | Keine einzelnen Tool-Objekte, sondern: `resources.tools` = Tools im Lager, `dwarf.hasTool` = Zwerg trägt eines. | `types.ts` |
+| Wobei hilft ein Tool? | Nur bei Woodcutting und Mining (Axt / Spitzhacke), nicht auf der Pilzfarm. | kommt in D2 Schritt 3 |
+| Was kostet eine Waffe? | 2 Holz + 4 Stein. Steinlastiger als ein Tool, damit Mining für die Verteidigung wichtig wird. | kommt in D2 Schritt 4 |
 
 ## Log
 
@@ -115,3 +118,20 @@ gehört zu D4 und macht Omar.
 D1 ist fertig. Ein Zwerg macht jetzt immer nur eine Sache, die Anzeige im Ledger
 rechnet mit denselben Funktionen wie die Simulation, und wenn das Essen ausgeht,
 merkt man das deutlich – nur die Farm arbeitet weiter, bis wieder alle satt sind.
+
+### D2 – Schritt 1: Datenmodell für Tools und Waffen (Patrick)
+
+Bevor man Tools ausrüsten kann, muss klar sein, wo ein Tool "liegt". Wir haben
+uns gegen eine Liste einzelner Tools mit IDs entschieden und es so einfach wie
+möglich gehalten: Ein Tool ist entweder im Lager (`resources.tools`) oder bei
+einem Zwerg (`hasTool: true`). Damit kann ein Tool gar nicht bei zwei Zwergen
+gleichzeitig sein, und ein Zwerg kann nicht zwei Tools haben. Die Gesamtzahl
+der Tools ist immer Lager + Zwerge mit Tool.
+
+- `types.ts`: `Dwarf` hat `hasTool`, `Resources` hat `weapons`. Waffen gehören
+  der Kolonie und werden niemandem zugewiesen (für die Verteidigung in D7).
+- `ColonyProvider.tsx`: Startzustand mit `weapons: 0` und `hasTool: false` bei
+  allen Zwergen. Das eine Start-Tool liegt im Lager.
+- `simulation.ts`: `weapons` beim Aufsummieren mitgenommen.
+- `ResourceBar.tsx`: neue Kachel "Weapons", die Tool-Kachel heißt jetzt "Tools in
+  store", damit klar ist, dass ausgerüstete Tools dort nicht mitzählen.

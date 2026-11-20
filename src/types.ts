@@ -1,7 +1,11 @@
-export type ResourceKey = "wood" | "stone" | "food" | "tools";
+export type ResourceKey = "wood" | "stone" | "food" | "tools" | "weapons";
 export type JobType = "woodcutting" | "mining" | "farming" | null;
 export type DwarfStatus = "idle" | "working" | "expedition";
-export interface Resources { wood: number; stone: number; food: number; tools: number }
+
+// tools   = tools lying in the store (NOT equipped). Equipped tools are counted
+//           via Dwarf.hasTool -> total tools = resources.tools + equipped dwarves.
+// weapons = colony weapon stock, not assigned to anyone (D2, used in D7).
+export interface Resources { wood: number; stone: number; food: number; tools: number; weapons: number }
 
 export interface Dwarf { 
     id: string;
@@ -9,8 +13,10 @@ export interface Dwarf {
      title: string; 
      icon: string; 
      assignment: JobType; 
-     status: DwarfStatus; 
-     specialty?: Exclude<JobType, null> 
+     status: DwarfStatus;
+     specialty?: Exclude<JobType, null>;
+     // true if this dwarf carries a tool from the store (max. one per dwarf)
+     hasTool: boolean;
 }
 
 export interface ColonyState {
