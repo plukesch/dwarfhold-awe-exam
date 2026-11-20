@@ -60,6 +60,15 @@ Commands: `npm install`, `npm run dev` (web + api), `npm test`, `npm run build`
   farmers produce (`isHaltedByHunger`). `starving` must be persisted (D5).
   Job changes only via `assignJob` – blocked unless status is idle/working
   (`canChangeAssignment`). New busy statuses (crafting, …) are blocked automatically.
+- D2: `resources.tools` = tools in the store only; `dwarf.hasTool` = carries one.
+  Total tools = store + dwarves with `hasTool`. `resources.weapons` = colony stock
+  (used by D7). Tool bonus only for woodcutting/mining. Weapon = 2 wood + 4 stone.
+  `hasTool` and `weapons` must be persisted (D5).
+  Tool logic: `src/game/tools.ts` (`equipTool`, `returnTool`). Tool bonus:
+  `getsToolBonus` in `simulation.ts`. Forge: `src/game/forge.ts` (`recipes`,
+  `craft`), provider action `forge(recipeId)` (replaces old `craftTool`).
+- Provider helper `log(message, tone)` adds a chronicle entry – use it instead of
+  writing `setActivities(...)` by hand.
 
 ## Starter bugs we found (baseline)
 

@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router";
 import { ResourceBar } from "../components/ResourceBar";
+import { equippedToolCount } from "../game/tools";
 import { useColony } from "../state/ColonyContext";
 
 export function Layout() {
@@ -40,7 +41,11 @@ export function Layout() {
         <NavLink to="/forge">Forge</NavLink>
       </nav>
 
-      <ResourceBar resources={colony.resources} starving={colony.starving} />
+      <ResourceBar
+        resources={colony.resources}
+        starving={colony.starving}
+        equippedTools={equippedToolCount(colony.dwarves)}
+      />
 
       {colony.starving && (
         <section className="hunger-banner" role="alert">

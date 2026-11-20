@@ -1,8 +1,11 @@
 import {
   canChangeAssignment,
+  getsToolBonus,
+  isAtHome,
   isHaltedByHunger,
   isProducing,
   jobLabel,
+  TOOL_BONUS,
 } from "../simulation";
 import type { Dwarf, JobType } from "../types";
 
@@ -11,10 +14,20 @@ const jobs: Exclude<JobType, null>[] = ["woodcutting", "mining", "farming"];
 interface Props {
   dwarves: Dwarf[];
   starving: boolean;
+  toolsInStore: number;
   onAssign: (id: string, job: JobType) => void;
+  onEquipTool: (id: string) => void;
+  onReturnTool: (id: string) => void;
 }
 
-export function DwarfRoster({ dwarves, starving, onAssign }: Props) {
+export function DwarfRoster({
+  dwarves,
+  starving,
+  toolsInStore,
+  onAssign,
+  onEquipTool,
+  onReturnTool,
+}: Props) {
   const presentDwarves = dwarves.filter(
     (dwarf) => dwarf.status !== "expedition",
   ).length;
@@ -49,10 +62,28 @@ export function DwarfRoster({ dwarves, starving, onAssign }: Props) {
               </div>
 
               <div className="dwarf-details">
-                <h3>{dwarf.name}</h3>
+                <h3>
+                  {dwarf.name}
+                  {dwarf.hasTool && (
+                    <span className="tool-badge" title="Carries a tool">
+                      ⚒️
+                    </span>
+                  )}
+                </h3>
                 <p>
                   {dwarf.title} · {specialty}
                 </p>
+                {dwarf.hasTool && (
+                  <small
+                    className={
+                      getsToolBonus(dwarf) ? "tool-note" : "tool-note unused"
+                    }
+                  >
+                    {getsToolBonus(dwarf)
+                      ? `Tool: +${TOOL_BONUS} per day on this job`
+                      : "Tool has no use on this job"}
+                  </small>
+                )}
 
                 <select
                   value={dwarf.assignment ?? ""}
@@ -77,6 +108,27 @@ export function DwarfRoster({ dwarves, starving, onAssign }: Props) {
                   <small className="job-paused">
                     Job paused while away – resumes on return
                   </small>
+                )}
+
+                {dwarf.hasTool ? (
+                  <button
+                    className="tool-button"
+                    disabled={!isAtHome(dwarf)}
+                    onClick={() => onReturnTool(dwarf.id)}
+                  >
+                    Return tool
+                  </button>
+                ) : (
+                  <button
+                    className="tool-button"
+                    disabled={!isAtHome(dwarf) || toolsInStore === 0}
+                    title={
+                      toolsInStore === 0 ? "No tool in the store" : undefined
+                    }
+                    onClick={() => onEquipTool(dwarf.id)}
+                  >
+                    Equip tool
+                  </button>
                 )}
               </div>
 
