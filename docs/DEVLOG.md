@@ -206,3 +206,5 @@ im Roster, wer eines hat, und es bringt bei Holz und Stein +1 pro Tag. Das Lager
 bleibt dabei immer stimmig, weil ein Tool nur zwischen Lager und Zwerg verschoben
 wird. Die Forge hat jetzt zusätzlich ein Waffenrezept, und Schmieden mit zu wenig
 Material ändert nichts mehr.
+
+wird beim nächsten commit rausgenommen, nur drinnen damit push einheitlich wird weil ich vorher etwas verkackt habe 
