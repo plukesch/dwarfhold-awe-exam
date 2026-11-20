@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { beginExpedition } from "../api";
+import { craft, missingMaterials, recipes, type RecipeId } from "../game/forge";
 import {
   canEquipTool,
   canReturnTool,
@@ -158,39 +159,24 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     log(`${dwarf.name} returns the tool to the store.`);
   }
 
-  function craftTool() {
-    if (colony.resources.wood < 3) {
-      setActivities((current) => [
-        {
-          id: crypto.randomUUID(),
-          day: colony.day,
-          message: "The forge needs more timber.",
-          tone: "warning" as const,
-        },
-        ...current,
-      ]);
+  function forge(recipeId: RecipeId) {
+    const recipe = recipes[recipeId];
+    const missing = missingMaterials(colony.resources, recipe);
+
+    if (missing.length > 0) {
+      log(
+        `The forge needs more ${missing.join(" and ")} for a ${recipe.name.toLowerCase()}.`,
+        "warning",
+      );
       return;
     }
 
-    setColony((current) => ({
-      ...current,
-      resources: {
-        ...current.resources,
-        wood: current.resources.wood - 3,
-        stone: current.resources.stone - 2,
-        tools: current.resources.tools + 1,
-      },
-    }));
-    setActivities((current) =>
-      [
-        {
-          id: crypto.randomUUID(),
-          day: colony.day,
-          message: "A sturdy iron tool joins the stores.",
-          tone: "good" as const,
-        },
-        ...current,
-      ].slice(0, 6),
+    // craft checks again on the current state -> nothing can go negative,
+    // even if two clicks arrive before React re-renders.
+    setColony((current) => craft(current, recipeId));
+    log(
+      `A new ${recipe.name.toLowerCase()} ${recipe.icon} joins the stores.`,
+      "good",
     );
   }
 
@@ -275,7 +261,7 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     assignDwarf,
     equipToolTo,
     returnToolFrom,
-    craftTool,
+    forge,
     sendExpedition,
   };
 

@@ -21,7 +21,7 @@ So arbeiten wir größtenteils in verschiedenen Dateien.
 | Was passiert bei Hunger? | Reicht das Essen nicht, ist die Kolonie `starving` und am nächsten Tag arbeitet nur die Pilzfarm. Essen wird nie negativ. | `advanceDay`, `isHaltedByHunger` in `simulation.ts` |
 | Wie werden Tools gespeichert? | Keine einzelnen Tool-Objekte, sondern: `resources.tools` = Tools im Lager, `dwarf.hasTool` = Zwerg trägt eines. | `types.ts` |
 | Wobei hilft ein Tool? | +1 pro Tag, aber nur bei Woodcutting und Mining (Axt / Spitzhacke), nicht auf der Pilzfarm. | `getsToolBonus`, `TOOL_JOBS` in `simulation.ts` |
-| Was kostet eine Waffe? | 2 Holz + 4 Stein. Steinlastiger als ein Tool, damit Mining für die Verteidigung wichtig wird. | kommt in D2 Schritt 4 |
+| Was kostet eine Waffe? | 2 Holz + 4 Stein. Steinlastiger als ein Tool, damit Mining für die Verteidigung wichtig wird. | `recipes` in `game/forge.ts` |
 
 ## Log
 
@@ -173,3 +173,36 @@ local job" aus dem Requirement auch wirklich eine Bedeutung.
   "3 per dwarf, +1 with tool" bzw. "tools don't help" bei der Farm.
 - Roster: Unter einem Zwerg mit Tool steht, ob es bei seinem aktuellen Job etwas
   bringt ("Tool: +1 per day on this job") oder nicht.
+
+### D2 – Schritt 4: Waffenrezept und sauberes Schmieden (Patrick)
+
+**Problem:** Die Forge hatte das Tool-Rezept fest in `craftTool` eingebaut und
+hat nur geprüft, ob genug Holz da ist. Mit genug Holz, aber zu wenig Stein wurde
+der Stein negativ. Für ein zweites Rezept hätte man die ganze Funktion kopieren
+müssen.
+
+**Lösung:** Neue Datei `src/game/forge.ts`:
+- `recipes` – beide Rezepte als Daten an einer Stelle (Name, Icon, Kosten, in
+  welches Lager das Ergebnis kommt). Tool: 3 Holz + 2 Stein, Waffe: 2 Holz + 4 Stein.
+- `missingMaterials` gibt zurück, was fehlt, `canAfford` ob alles da ist.
+- `craft(state, recipeId)` zieht **alle** Kosten ab und legt das Ergebnis ins Lager.
+  Fehlt irgendwas, kommt der unveränderte State zurück – nichts wird halb bezahlt.
+
+Im Provider ersetzt `forge(recipeId)` das alte `craftTool`. Fehlt Material, steht
+in der Chronicle genau was ("The forge needs more stone for a weapon").
+Die Forge-Seite baut ihre Panels jetzt aus `recipes` – ein weiteres Rezept wäre
+also nur ein neuer Eintrag. Buttons sind gesperrt, wenn das Material nicht reicht.
+
+Waffen landen als Ressource im Lager und gehören keinem Zwerg. Wofür sie gebraucht
+werden, kommt mit D7 (Verteidigung).
+
+Schmieden passiert in D2 noch sofort. Dass es Zeit und einen Zwerg braucht, ist
+D3.
+
+### D2 – Fazit
+
+D2 ist fertig. Tools kann man einem Zwerg geben und wieder zurücknehmen, man sieht
+im Roster, wer eines hat, und es bringt bei Holz und Stein +1 pro Tag. Das Lager
+bleibt dabei immer stimmig, weil ein Tool nur zwischen Lager und Zwerg verschoben
+wird. Die Forge hat jetzt zusätzlich ein Waffenrezept, und Schmieden mit zu wenig
+Material ändert nichts mehr.

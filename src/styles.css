@@ -26,3 +26,7 @@
 .tool-note{display:block;margin:-4px 0 6px;font:11px Barlow Condensed;color:#75b66e}
 .tool-note.unused{color:#967f64}
 .job-rate{display:block;margin-top:3px;font:10px Barlow Condensed;color:#7d6a52}
+
+/* D2 forge: one panel per recipe */
+.forge-recipes{display:grid;gap:15px}
+.recipe button:disabled{opacity:.45;cursor:not-allowed}
