@@ -1,5 +1,7 @@
+import { isAtHome } from "./dwarves";
 import type {
   ColonyState,
+  Dwarf,
   RecipeId,
   ResourceKey,
   Resources,
@@ -57,17 +59,60 @@ export function canAfford(resources: Resources, recipe: Recipe): boolean {
   return missingMaterials(resources, recipe).length === 0;
 }
 
-// Pays ALL materials and adds the item – or, if anything is missing,
-// returns the unchanged state (no partial payment, nothing goes negative).
-export function craft(state: ColonyState, recipeId: RecipeId): ColonyState {
-  const recipe = recipes[recipeId];
-  if (!canAfford(state.resources, recipe)) return state;
+// Who may work the forge? Any dwarf who is at home (idle or working).
+// Dwarves on an expedition or already crafting are not eligible.
+export function canForge(dwarf: Dwarf): boolean {
+  return isAtHome(dwarf);
+}
 
+// Why can't this order start? null = everything is fine.
+export function forgeProblem(
+  state: ColonyState,
+  recipeId: RecipeId,
+  dwarfId: string,
+): string | null {
+  const recipe = recipes[recipeId];
+  const dwarf = state.dwarves.find((item) => item.id === dwarfId);
+
+  if (!isForgeFree(state)) return "The forge is already in use.";
+  if (!dwarf) return "Choose a smith first.";
+  if (!canForge(dwarf))
+    return `${dwarf.name} is busy and cannot work the forge.`;
+  const missing = missingMaterials(state.resources, recipe);
+  if (missing.length > 0) {
+    return `The forge needs more ${missing.join(" and ")} for a ${recipe.name.toLowerCase()}.`;
+  }
+  return null;
+}
+
+// Starts a forge order (D3). Everything happens at once or not at all:
+// - materials are paid immediately (the smith takes them to the forge)
+// - the smith gets status "crafting" (no production, no job change)
+// - the order remembers on which day the item is ready
+// Invalid request -> unchanged state (no worker or resource changes).
+export function startForging(
+  state: ColonyState,
+  recipeId: RecipeId,
+  dwarfId: string,
+): ColonyState {
+  if (forgeProblem(state, recipeId, dwarfId) !== null) return state;
+
+  const recipe = recipes[recipeId];
   const resources = { ...state.resources };
   for (const [key, amount] of Object.entries(recipe.cost)) {
     resources[key as ResourceKey] -= amount ?? 0;
   }
-  resources[recipe.output] += 1;
 
-  return { ...state, resources };
+  return {
+    ...state,
+    resources,
+    dwarves: state.dwarves.map((item) =>
+      item.id === dwarfId ? { ...item, status: "crafting" } : item,
+    ),
+    forgeTask: {
+      recipeId,
+      dwarfId,
+      completesOnDay: state.day + recipe.days,
+    },
+  };
 }

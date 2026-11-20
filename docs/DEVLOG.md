@@ -24,7 +24,8 @@ So arbeiten wir größtenteils in verschiedenen Dateien.
 | Was kostet eine Waffe? | 2 Holz + 4 Stein. Steinlastiger als ein Tool, damit Mining für die Verteidigung wichtig wird. | `recipes` in `game/forge.ts` |
 | Wie lange dauert Schmieden? | Tool 2 Tage, Waffe 3 Tage. | `days` in `recipes` (`game/forge.ts`) |
 | Wie viele Aufträge gleichzeitig? | Nur einer – Stonehome hat genau eine Schmiede. | `forgeTask` in `types.ts` |
-| Wann wird das Material abgezogen? | Beim Start. Der Zwerg holt sich die Materialien aus dem Lager und geht damit zur Schmiede. | kommt in D3 Schritt 2 |
+| Wann wird das Material abgezogen? | Beim Start. Der Zwerg holt sich die Materialien aus dem Lager und geht damit zur Schmiede. | `startForging` in `game/forge.ts` |
+| Wer darf schmieden? | Jeder Zwerg, der zu Hause ist (`idle` oder `working`). Wer unterwegs ist oder schon schmiedet, nicht. | `canForge` in `game/forge.ts` |
 
 ## Log
 
@@ -244,3 +245,47 @@ die Dauer. Im Footer steht statt dem fixen "Forge: burning" jetzt "free" bzw.
 
 Geschmiedet wird in diesem Schritt noch sofort – das Starten mit Zwerg und Dauer
 kommt in Schritt 2.
+
+### D3 – Schritt 2: Schmieden starten (Patrick)
+
+Statt sofort ein Item zu bekommen, startet man jetzt einen Auftrag mit einem
+Zwerg als Schmied.
+
+**`game/forge.ts`:**
+- `canForge(dwarf)` – schmieden darf, wer zu Hause ist. Wer auf Expedition ist
+  oder schon schmiedet, fällt raus.
+- `forgeProblem(state, recipe, dwarf)` – prüft der Reihe nach: Schmiede frei?
+  Zwerg ausgewählt? Zwerg verfügbar? Material da? Gibt den Grund als Text zurück
+  oder `null`, wenn alles passt. Den Text verwenden wir direkt für die Chronicle.
+- `startForging(state, recipe, dwarf)` – wenn `forgeProblem` nichts findet,
+  passiert alles auf einmal: Material wird abgezogen, der Zwerg bekommt den
+  Status `crafting`, und `forgeTask` merkt sich Rezept, Zwerg und
+  `completesOnDay = heute + Dauer`. Sonst kommt der unveränderte State zurück –
+  ein ungültiger Versuch ändert also weder Zwerge noch Ressourcen.
+- Die alte Funktion `craft` (sofort fertig) ist weg, weil D3 genau das nicht mehr
+  erlaubt.
+
+Der Job des Zwergs bleibt gespeichert, er ruht nur – wie bei einer Expedition.
+So kann er nach dem Schmieden einfach weitermachen.
+
+**Kleiner Umbau:** `isAtHome` liegt jetzt in einer eigenen Datei
+`game/dwarves.ts`. Grund: In Schritt 3 muss `advanceDay` (in `simulation.ts`)
+die Forge-Logik aufrufen. Hätte `forge.ts` gleichzeitig aus `simulation.ts`
+importiert, gäbe es einen Kreis-Import. `simulation.ts` exportiert `isAtHome`
+weiter, damit bestehende Imports nicht kaputtgehen.
+
+**Provider:** `forge(recipeId, dwarfId)` prüft mit `forgeProblem`, schreibt bei
+einem Problem den Grund in die Chronicle und startet sonst mit
+`setColony(current => startForging(current, …))`. Weil auf dem aktuellen State
+nochmal geprüft wird, kann ein Doppelklick nicht zweimal Material abziehen.
+
+**UI:**
+- Forge-Seite: Ist die Schmiede frei, wählt man im Dropdown einen Schmied – dort
+  stehen nur Zwerge, die gerade dürfen. Läuft ein Auftrag, steht stattdessen
+  "Dori is forging a tool – ready on day 14". Die Buttons sind gesperrt, wenn die
+  Schmiede belegt ist, Material fehlt oder niemand verfügbar ist.
+- Roster: Beim schmiedenden Zwerg steht "At the forge – job paused until the
+  item is done". Dropdown und Tool-Button sind gesperrt.
+
+Fertig wird ein Auftrag erst mit Schritt 3 – bis dahin bleibt der Zwerg in der
+Schmiede.

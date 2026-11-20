@@ -1,4 +1,4 @@
-import { isAtHome } from "../simulation";
+import { isAtHome } from "./dwarves";
 import type { ColonyState, Dwarf } from "../types";
 
 // A tool lives either in the store (resources.tools) or with exactly one dwarf

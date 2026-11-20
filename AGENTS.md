@@ -70,7 +70,11 @@ Commands: `npm install`, `npm run dev` (web + api), `npm test`, `npm run build`
 - D3: status `crafting`; `ColonyState.forgeTask` (`{ recipeId, dwarfId,
   completesOnDay }` or `null`) – only ONE order at a time. Tool 2 days, weapon
   3 days (`recipes[..].days`). Materials are paid at the start. `forgeTask` must
-  be persisted (D5).
+  be persisted (D5). Start an order with `startForging` (`game/forge.ts`), the
+  old instant `craft` is gone. `isAtHome` lives in `game/dwarves.ts`.
+- **For D4 (Omar):** only dwarves with `isAtHome(dwarf)` may be sent on an
+  expedition – a `crafting` dwarf must not leave (currently not checked in
+  `sendExpedition`).
 - Provider helper `log(message, tone)` adds a chronicle entry – use it instead of
   writing `setActivities(...)` by hand.
 

@@ -109,6 +109,11 @@ export function DwarfRoster({
                     Job paused while away – resumes on return
                   </small>
                 )}
+                {dwarf.status === "crafting" && (
+                  <small className="job-paused">
+                    🔨 At the forge – job paused until the item is done
+                  </small>
+                )}
 
                 {dwarf.hasTool ? (
                   <button
