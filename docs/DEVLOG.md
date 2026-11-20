@@ -135,3 +135,22 @@ der Tools ist immer Lager + Zwerge mit Tool.
 - `simulation.ts`: `weapons` beim Aufsummieren mitgenommen.
 - `ResourceBar.tsx`: neue Kachel "Weapons", die Tool-Kachel heißt jetzt "Tools in
   store", damit klar ist, dass ausgerüstete Tools dort nicht mitzählen.
+
+### D2 – Schritt 2: Tools ausrüsten und zurückgeben (Patrick)
+
+Ausrüsten und Zurückgeben verschieben ein Tool nur zwischen Lager und Zwerg,
+die Gesamtzahl bleibt also immer gleich.
+
+- Neue Datei `src/game/tools.ts` mit den Funktionen `equipTool` (Lager −1, Zwerg
+  bekommt das Tool) und `returnTool` (umgekehrt). Ist der Aufruf ungültig – Lager
+  leer, Zwerg hat schon ein Tool, Zwerg ist unterwegs –, kommt der unveränderte
+  State zurück. So bleibt das Inventar immer konsistent.
+- Damit "Zwerg ist zu Hause" nicht an mehreren Stellen steht, gibt es dafür jetzt
+  `isAtHome` in `simulation.ts`. `canChangeAssignment` aus D1 verwendet das auch.
+- `ColonyProvider.tsx`: neue Aktionen `equipToolTo` und `returnToolFrom` mit
+  Chronicle-Eintrag. Weil sich der Code für Chronicle-Einträge ständig wiederholt
+  hat, gibt es dafür jetzt eine kleine Hilfsfunktion `log(message, tone)`.
+- UI: Im Roster hat jeder Zwerg einen Button "Equip tool" bzw. "Return tool",
+  und wer ein Tool trägt, hat ein ⚒️ neben dem Namen. Der Button ist gesperrt,
+  wenn das Lager leer ist oder der Zwerg unterwegs ist. In der Ressourcenleiste
+  steht unter "Tools in store" zusätzlich, wie viele gerade ausgerüstet sind.

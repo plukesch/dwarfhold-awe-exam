@@ -11,10 +11,15 @@ export function isProducing(dwarf: Dwarf): boolean {
   return dwarf.assignment !== null && dwarf.status === "working";
 }
 
-// A dwarf can only get a new job while they are at home (idle or working).
+// "At home" = not busy with something else (expedition, later: crafting).
+export function isAtHome(dwarf: Dwarf): boolean {
+  return dwarf.status === "idle" || dwarf.status === "working";
+}
+
+// A dwarf can only get a new job while they are at home.
 // Away on an expedition (or later: crafting) -> the current activity comes first.
 export function canChangeAssignment(dwarf: Dwarf): boolean {
-  return dwarf.status === "idle" || dwarf.status === "working";
+  return isAtHome(dwarf);
 }
 
 // Assigns a job. Invalid request (unknown dwarf or dwarf busy elsewhere)

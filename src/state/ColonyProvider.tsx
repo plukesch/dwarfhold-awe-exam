@@ -1,17 +1,18 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { beginExpedition } from "../api";
 import {
+  canEquipTool,
+  canReturnTool,
+  equipTool,
+  returnTool,
+} from "../game/tools";
+import {
   advanceDay,
   assignJob,
   canChangeAssignment,
   jobLabel,
 } from "../simulation";
-import type {
-  Activity,
-  ColonyState,
-  JobType,
-  ResourceKey,
-} from "../types";
+import type { Activity, ColonyState, JobType, ResourceKey } from "../types";
 import { ColonyContext, type ColonyContextValue } from "./ColonyContext";
 
 const initialState: ColonyState = {
@@ -102,21 +103,24 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     );
   }, [colony.starving, colony.day]);
 
+  // Adds one entry to the Hold Chronicle (newest first, max. 6 entries).
+  function log(message: string, tone?: Activity["tone"]) {
+    setActivities((current) =>
+      [
+        { id: crypto.randomUUID(), day: colony.day, message, tone },
+        ...current,
+      ].slice(0, 6),
+    );
+  }
+
   function assignDwarf(id: string, assignment: JobType) {
     const dwarf = colony.dwarves.find((item) => item.id === id);
     if (!dwarf) return;
 
     if (!canChangeAssignment(dwarf)) {
-      setActivities((current) =>
-        [
-          {
-            id: crypto.randomUUID(),
-            day: colony.day,
-            message: `${dwarf.name} is away and cannot take a new job right now.`,
-            tone: "warning" as const,
-          },
-          ...current,
-        ].slice(0, 6),
+      log(
+        `${dwarf.name} is away and cannot take a new job right now.`,
+        "warning",
       );
       return;
     }
@@ -124,16 +128,34 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     // assignJob checks again on the *current* state, so even a click that
     // races with an expedition departure cannot create a dwarf in two places.
     setColony((current) => assignJob(current, id, assignment));
-    setActivities((current) =>
-      [
-        {
-          id: crypto.randomUUID(),
-          day: colony.day,
-          message: `${dwarf.name} assigned to ${jobLabel(assignment)}.`,
-        },
-        ...current,
-      ].slice(0, 6),
-    );
+    log(`${dwarf.name} assigned to ${jobLabel(assignment)}.`);
+  }
+
+  function equipToolTo(id: string) {
+    const dwarf = colony.dwarves.find((item) => item.id === id);
+    if (!dwarf) return;
+
+    if (!canEquipTool(colony, dwarf)) {
+      log(
+        colony.resources.tools === 0
+          ? "No tool left in the store."
+          : `${dwarf.name} cannot take a tool right now.`,
+        "warning",
+      );
+      return;
+    }
+
+    // equipTool checks again on the current state -> store can never go below 0
+    setColony((current) => equipTool(current, id));
+    log(`${dwarf.name} takes a tool from the store.`);
+  }
+
+  function returnToolFrom(id: string) {
+    const dwarf = colony.dwarves.find((item) => item.id === id);
+    if (!dwarf || !canReturnTool(dwarf)) return;
+
+    setColony((current) => returnTool(current, id));
+    log(`${dwarf.name} returns the tool to the store.`);
   }
 
   function craftTool() {
@@ -251,6 +273,8 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     expeditionPending,
     togglePaused: () => setPaused((value) => !value),
     assignDwarf,
+    equipToolTo,
+    returnToolFrom,
     craftTool,
     sendExpedition,
   };

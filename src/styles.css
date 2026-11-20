@@ -17,3 +17,9 @@
 .job-grid article.halted{opacity:.55;border-color:#b5503c}
 .status.hungry{color:#f09a7f;border-color:#b5503c}
 .job-paused{display:block;margin-top:4px;font:11px Barlow Condensed;color:#d9a34f}
+
+/* D2 tools: badge next to the owner's name, equip/return button, equipped count */
+.tool-badge{margin-left:6px;font-size:14px}
+.tool-button{display:block;margin-top:6px;padding:3px 8px;background:#2a2118;color:#d9a34f;border:1px solid #74552d;font:600 10px Barlow Condensed;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
+.tool-button:disabled{opacity:.4;cursor:not-allowed}
+.resource-bar em{font:11px Barlow Condensed;font-style:normal;color:#967f64}

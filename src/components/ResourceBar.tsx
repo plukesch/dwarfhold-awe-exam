@@ -11,9 +11,10 @@ const details = {
 interface Props {
   resources: Resources;
   starving: boolean;
+  equippedTools: number;
 }
 
-export function ResourceBar({ resources, starving }: Props) {
+export function ResourceBar({ resources, starving, equippedTools }: Props) {
   return (
     <section className="resource-bar">
       {Object.entries(resources).map(([key, value]) => {
@@ -27,6 +28,7 @@ export function ResourceBar({ resources, starving }: Props) {
             <div>
               <small>{alert ? `${label} – starving!` : label}</small>
               <strong>{value}</strong>
+              {key === "tools" && <em>+ {equippedTools} equipped</em>}
             </div>
           </article>
         );
