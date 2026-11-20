@@ -11,6 +11,32 @@ export function isProducing(dwarf: Dwarf): boolean {
   return dwarf.assignment !== null && dwarf.status === "working";
 }
 
+// A dwarf can only get a new job while they are at home (idle or working).
+// Away on an expedition (or later: crafting) -> the current activity comes first.
+export function canChangeAssignment(dwarf: Dwarf): boolean {
+  return dwarf.status === "idle" || dwarf.status === "working";
+}
+
+// Assigns a job. Invalid request (unknown dwarf or dwarf busy elsewhere)
+// -> returns the unchanged state, so nothing is half-updated.
+export function assignJob(
+  state: ColonyState,
+  dwarfId: string,
+  assignment: JobType,
+): ColonyState {
+  const dwarf = state.dwarves.find((item) => item.id === dwarfId);
+  if (!dwarf || !canChangeAssignment(dwarf)) return state;
+
+  return {
+    ...state,
+    dwarves: state.dwarves.map((item) =>
+      item.id === dwarfId
+        ? { ...item, assignment, status: assignment ? "working" : "idle" }
+        : item,
+    ),
+  };
+}
+
 // Team decision (D1 hunger rule): while the colony is starving, only the
 // Mushroom Farm keeps working – hungry dwarves have no strength for wood or stone.
 export function isHaltedByHunger(job: JobType, starving: boolean): boolean {

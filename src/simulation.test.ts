@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advanceDay, dailyProduction } from "./simulation";
+import { advanceDay, assignJob, dailyProduction } from "./simulation";
 import type { ColonyState, Dwarf } from "./types";
 
 const dwarf = (overrides: Partial<Dwarf>): Dwarf => ({
@@ -49,6 +49,30 @@ describe("colony simulation", () => {
       dwarf({ id: "d2", assignment: "farming", status: "expedition" }),
       dwarf({ id: "d3", assignment: null, status: "idle" }),
     ])).toEqual({ wood: 0, stone: 0, food: 4, tools: 0 });
+  });
+});
+
+describe("job assignment (D1: one activity at a time)", () => {
+  it("assigns a job to a dwarf at home and sets them to working", () => {
+    const state = colony({ dwarves: [dwarf({ id: "d1" })] });
+    const next = assignJob(state, "d1", "mining");
+    expect(next.dwarves[0]).toMatchObject({ assignment: "mining", status: "working" });
+  });
+
+  it("unassigning sets the dwarf to idle", () => {
+    const state = colony({ dwarves: [dwarf({ id: "d1", assignment: "mining", status: "working" })] });
+    expect(assignJob(state, "d1", null).dwarves[0]).toMatchObject({ assignment: null, status: "idle" });
+  });
+
+  it("does not change a dwarf who is on an expedition", () => {
+    const state = colony({ dwarves: [dwarf({ id: "d1", assignment: "woodcutting", status: "expedition" })] });
+    const next = assignJob(state, "d1", "mining");
+    expect(next).toBe(state); // exactly the same object -> nothing changed
+  });
+
+  it("ignores unknown dwarves", () => {
+    const state = colony({ dwarves: [dwarf({ id: "d1" })] });
+    expect(assignJob(state, "nobody", "mining")).toBe(state);
   });
 });
 

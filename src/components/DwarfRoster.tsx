@@ -1,4 +1,9 @@
-import { isHaltedByHunger, isProducing, jobLabel } from "../simulation";
+import {
+  canChangeAssignment,
+  isHaltedByHunger,
+  isProducing,
+  jobLabel,
+} from "../simulation";
 import type { Dwarf, JobType } from "../types";
 
 const jobs: Exclude<JobType, null>[] = ["woodcutting", "mining", "farming"];
@@ -51,7 +56,12 @@ export function DwarfRoster({ dwarves, starving, onAssign }: Props) {
 
                 <select
                   value={dwarf.assignment ?? ""}
-                  disabled={isAway}
+                  disabled={!canChangeAssignment(dwarf)}
+                  title={
+                    isAway
+                      ? "Away – the job is paused and resumes on return"
+                      : undefined
+                  }
                   onChange={(event) =>
                     onAssign(dwarf.id, (event.target.value || null) as JobType)
                   }
@@ -63,6 +73,11 @@ export function DwarfRoster({ dwarves, starving, onAssign }: Props) {
                     </option>
                   ))}
                 </select>
+                {isAway && dwarf.assignment && (
+                  <small className="job-paused">
+                    Job paused while away – resumes on return
+                  </small>
+                )}
               </div>
 
               {isHungry ? (

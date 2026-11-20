@@ -58,6 +58,8 @@ Commands: `npm install`, `npm run dev` (web + api), `npm test`, `npm run build`
   Everyone eats 1 ration/day, also on expeditions (`dailyMeals`).
   `ColonyState.starving`: if meals can't be served, food = 0 and next day only
   farmers produce (`isHaltedByHunger`). `starving` must be persisted (D5).
+  Job changes only via `assignJob` – blocked unless status is idle/working
+  (`canChangeAssignment`). New busy statuses (crafting, …) are blocked automatically.
 
 ## Starter bugs we found (baseline)
 

@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { beginExpedition } from "../api";
-import { advanceDay, jobLabel } from "../simulation";
+import {
+  advanceDay,
+  assignJob,
+  canChangeAssignment,
+  jobLabel,
+} from "../simulation";
 import type {
   Activity,
   ColonyState,
@@ -94,26 +99,33 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
   }, [colony.starving, colony.day]);
 
   function assignDwarf(id: string, assignment: JobType) {
-    setColony((current) => ({
-      ...current,
-      dwarves: current.dwarves.map((dwarf) =>
-        dwarf.id === id
-          ? {
-              ...dwarf,
-              assignment,
-              status: assignment ? "working" : "idle",
-            }
-          : dwarf,
-      ),
-    }));
-
     const dwarf = colony.dwarves.find((item) => item.id === id);
+    if (!dwarf) return;
+
+    if (!canChangeAssignment(dwarf)) {
+      setActivities((current) =>
+        [
+          {
+            id: crypto.randomUUID(),
+            day: colony.day,
+            message: `${dwarf.name} is away and cannot take a new job right now.`,
+            tone: "warning" as const,
+          },
+          ...current,
+        ].slice(0, 6),
+      );
+      return;
+    }
+
+    // assignJob checks again on the *current* state, so even a click that
+    // races with an expedition departure cannot create a dwarf in two places.
+    setColony((current) => assignJob(current, id, assignment));
     setActivities((current) =>
       [
         {
           id: crypto.randomUUID(),
           day: colony.day,
-          message: `${dwarf?.name ?? "A dwarf"} assigned to ${jobLabel(assignment)}.`,
+          message: `${dwarf.name} assigned to ${jobLabel(assignment)}.`,
         },
         ...current,
       ].slice(0, 6),
