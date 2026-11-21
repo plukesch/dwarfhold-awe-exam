@@ -582,3 +582,31 @@ kaputt gemacht: fehlendes Feld, negative Ressource, unbekannter Status,
 Widerspruch zwischen Status und Liste, andere Version, kein JSON. Dazu:
 Speichern und Laden ergibt denselben State, Reisende kommen ohne Beute zurück,
 ein Schmiede-Auftrag wird nach dem Laden normal fertig.
+
+### D5 – Schritt 4: Provider lädt beim Start und speichert jede Änderung (Omar)
+
+Nur `src/state/ColonyProvider.tsx` hat sich geändert, die Spielregeln nicht.
+
+- **Laden:** `loadGame()` liest den Spielstand und prüft ihn mit `parseSave`.
+  Es gibt drei Fälle: nichts gespeichert → neue Kolonie wie bisher; kaputt oder
+  alte Version → neue Kolonie plus Warnung in der Chronicle; gültig →
+  `resumeAfterRefresh`, Chronicle meldet "Stonehome restored on day X" und
+  welche Reisenden ohne Beute zurückkamen. Aufgerufen wird es mit
+  `useState(loadGame)` (die Funktion, nicht `loadGame()`), damit React es nur
+  beim ersten Render ausführt.
+- **Speichern:** ein `useEffect` auf `colony` schreibt nach jeder Änderung
+  (jeder Tag, jede Aktion). Eine einzige Stelle – eine neue Aktion kann das
+  Speichern also nicht vergessen.
+- **Robust:** `localStorage` kann werfen (gesperrt im Privatmodus, voll).
+  `readSave`/`writeSave` fangen das ab, das Spiel läuft dann ohne Speichern weiter.
+- Die Refs `today`, `wasStarving`, `previousTask` starten mit dem geladenen
+  State → nach einem Refresh erscheinen keine doppelten Hunger-Meldungen.
+
+**Browser-Test:** Refresh direkt nach "Send expedition" → Zwerg zu Hause, keine
+Beute (auch nicht, als die alte Server-Antwort fällig gewesen wäre), Chronicle-
+Eintrag da. Refresh während eines Waffen-Auftrags → wird am geplanten Tag fertig.
+Refresh beim Hungern → keine doppelte Meldung. `dwarfhold-save` = "kaputt" →
+neue Kolonie mit Warnung, keine Fehler in der Konsole.
+
+**Bekannte Grenze:** In zwei Tabs gleichzeitig gewinnt der letzte Speichervorgang.
+Nicht verlangt, deshalb bewusst nicht gelöst.

@@ -100,7 +100,11 @@ Commands: `npm install`, `npm run dev` (web + api), `npm test`, `npm run build`
   problem: not JSON, other version, wrong/missing fields, negative or broken
   numbers, contradicting data). `resumeAfterRefresh(colony)` applies the refresh
   policy: interrupted expeditions -> `failExpedition` (home without loot),
-  `forgeTask` is kept and continues. Not yet wired into the provider.
+  `forgeTask` is kept and continues. Wired into the provider (step 4):
+  `loadGame()` runs once via `useState(loadGame)` (nothing saved -> new colony,
+  unreadable -> new colony + warning, valid -> `resumeAfterRefresh` + chronicle
+  entries); a `useEffect` on `colony` saves after every change. `readSave` /
+  `writeSave` wrap `localStorage` in try/catch. UI rule texts still missing.
   Team decisions: chronicle and pause are not saved; no "New game" button.
 - Provider helper `log(message, tone)` adds a chronicle entry – use it instead of
   writing `setActivities(...)` by hand. It takes the day from the `today` ref
