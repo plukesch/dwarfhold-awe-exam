@@ -21,6 +21,7 @@ const colony = (dwarves: Dwarf[] = [dwarf({})]): ColonyState => ({
   starving: false,
   forgeTask: null,
   expeditions: [],
+  lastRaid: null,
 });
 
 describe("departing on an expedition (D4)", () => {
@@ -124,5 +125,44 @@ describe("HCW – the hostile destination (D7)", () => {
   it("is the only destination marked hostile", () => {
     const hostile = Object.values(destinations).filter((place) => place.hostile);
     expect(hostile.map((place) => place.id)).toEqual(["hcw"]);
+  });
+});
+
+describe("returning from HCW: the lecturers attack (D7)", () => {
+  // Brom travels to HCW; the store holds `weapons` weapons.
+  const atHcw = (weapons: number) => {
+    const start = { ...colony(), resources: { ...colony().resources, weapons } };
+    return departExpedition(start, "e1", "d1", "hcw");
+  };
+
+  it("success with 3 weapons: loot is stored, one weapon breaks, nothing is looted", () => {
+    const next = completeExpedition(atHcw(3), "e1", { wood: 6, food: 4 });
+    expect(next.resources).toEqual({ wood: 11, stone: 5, food: 14, tools: 0, weapons: 2 });
+    expect(next.lastRaid).toEqual({ day: 10, defended: true, weaponsLost: 1, loot: {} });
+    expect(next.dwarves[0].status).toBe("working");
+  });
+
+  it("success without enough weapons: half of the store (incl. the new loot) is taken", () => {
+    const next = completeExpedition(atHcw(2), "e1", { wood: 6, food: 4 });
+    // before the raid: wood 11, stone 5, food 14 -> lecturers take 5, 2, 7
+    expect(next.resources).toEqual({ wood: 6, stone: 3, food: 7, tools: 0, weapons: 2 });
+    expect(next.lastRaid).toMatchObject({ defended: false, loot: { wood: 5, stone: 2, food: 7 } });
+  });
+
+  it("a failed journey to HCW never leads to an attack", () => {
+    const before = atHcw(0);
+    const next = failExpedition(before, "e1");
+    expect(next.lastRaid).toBeNull();
+    expect(next.resources).toEqual(before.resources);
+  });
+
+  it("the same result arriving twice attacks only once", () => {
+    const once = completeExpedition(atHcw(0), "e1", { wood: 6 });
+    expect(completeExpedition(once, "e1", { wood: 6 })).toBe(once);
+  });
+
+  it("other destinations do not attack", () => {
+    const away = departExpedition(colony(), "e1", "d1", "old-mine");
+    expect(completeExpedition(away, "e1", { stone: 12 }).lastRaid).toBeNull();
   });
 });

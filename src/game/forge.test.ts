@@ -14,6 +14,7 @@ const colony = (resources: Partial<Resources>, dwarves: Dwarf[] = [dwarf({})]): 
   starving: false,
   forgeTask: null,
   expeditions: [],
+  lastRaid: null,
 });
 
 describe("forge recipes (D2)", () => {

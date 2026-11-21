@@ -78,6 +78,7 @@ const initialState: ColonyState = {
   starving: false,
   forgeTask: null,
   expeditions: [],
+  lastRaid: null,
 };
 
 // D5: Browser storage can throw (blocked in some private modes, or full).

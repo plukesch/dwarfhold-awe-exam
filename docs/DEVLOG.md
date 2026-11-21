@@ -36,7 +36,7 @@ So arbeiten wir größtenteils in verschiedenen Dateien.
 | Was wird gespeichert? | Der ganze `ColonyState` mit Versionsnummer. Chronicle und Pause nicht – die Chronicle ist nur ein Log, und nach dem Laden läuft das Spiel wieder. | `serializeSave` in `game/persistence.ts` |
 | Kaputter oder alter Spielstand? | Wird komplett ignoriert, es startet eine neue Kolonie. Kein "halb laden". | `parseSave` in `game/persistence.ts` |
 | Welches Ziel löst den Angriff aus? | **HCW** – bringt 6 Holz + 4 Nahrung, aber die **Lektoren** folgen dem Zwerg nach Hause. | `hostile: true` in `destinations` (`game/expeditions.ts`), `server/index.js` |
-| Wann greifen die Lektoren an? | Sofort bei der erfolgreichen Rückkehr, nachdem die Beute gebucht ist. Ein Fehlschlag (auch durch Refresh) löst nie einen Angriff aus. Auch während der Pause. | `completeExpedition` + `game/raid.ts` (D7 Schritt 2–3) |
+| Wann greifen die Lektoren an? | Sofort bei der erfolgreichen Rückkehr, nachdem die Beute gebucht ist. Ein Fehlschlag (auch durch Refresh) löst nie einen Angriff aus. Auch während der Pause. | `completeExpedition` in `game/expeditions.ts` |
 | Ab wann verteidigt sich Stonehome? | Ab **3 Waffen** im Lager. | `RAID_DEFENSE_THRESHOLD` in `game/raid.ts` |
 | Verbraucht die Verteidigung Waffen? | Ja, **1 Waffe bricht** pro abgewehrtem Angriff. | `WEAPONS_LOST_ON_DEFENSE` in `game/raid.ts` |
 | Was wird geplündert? | Ohne Verteidigung nehmen die Lektoren **die Hälfte (abgerundet)** von Holz, Stein und Nahrung. Fest berechnet, nie negativ. Tools und Waffen nehmen sie nicht. | `raidLoot` in `game/raid.ts` |
@@ -678,3 +678,44 @@ Neue Datei `src/game/raid.ts`, noch nicht ans Spiel angeschlossen (Schritt 3).
 darunter, Verteidigung kostet eine Waffe, Plünderung rechnet richtig ab, leeres
 Lager bleibt bei 0, deterministisch, die übergebene Kolonie wird nicht verändert.
 88 grün, Build grün.
+
+### D7 – Schritt 3: Der Angriff kommt bei der Rückkehr (Omar)
+
+- `ColonyState.lastRaid: RaidReport | null` – der letzte Angriff (oder `null`).
+  Er liegt im State, damit die Anzeige (Schritt 5) einfach den State liest und
+  `resolveRaid` eine reine Funktion bleibt. Deshalb gibt `resolveRaid(state)`
+  jetzt direkt die neue Kolonie mit gesetztem `lastRaid` zurück (statt
+  `{ colony, report }` aus Schritt 2) – ein Ergebnis, eine Stelle.
+- `completeExpedition`: erst wird die Beute gebucht und der Zwerg ist zu Hause,
+  dann – nur wenn `destinations[...].hostile` – `resolveRaid`. Die Lektoren
+  plündern also auch die frische HCW-Beute.
+- Warum die Regeln aus D7 automatisch halten:
+  - **Fehlschlag → kein Angriff:** der Angriff steht nur in
+    `completeExpedition`. `failExpedition` (Serverfehler, Timeout, Refresh)
+    kommt gar nicht daran vorbei.
+  - **Nur ein Angriff pro Reise:** unbekannte Id (Ergebnis kommt doppelt) →
+    `completeExpedition` gibt den State unverändert zurück, vor dem Angriff.
+- `lastRaid: null` in allen Test-Kolonien ergänzt, auch in Patricks
+  `forge.test.ts`, `tools.test.ts`, `simulation.test.ts` (je eine Zeile, im PR
+  erwähnen), und im `initialState` des Providers.
+
+**Tests:** 5 neue in `expeditions.test.ts` – mit 3 Waffen verteidigt, mit 2
+geplündert (inkl. frischer Beute), Fehlschlag ohne Angriff, doppeltes Ergebnis
+greift nur einmal an, andere Ziele greifen nicht an.
+
+### D7 – Schritt 4: Angriff wird mitgespeichert (Omar)
+
+`lastRaid` ist neu in `ColonyState` → die Form des Spielstands hat sich
+geändert → `SAVE_VERSION` von 1 auf **2**. Ein Spielstand von vor D7 wird damit
+sauber abgelehnt (neue Kolonie mit Hinweis), statt ohne `lastRaid` halb zu laden.
+
+- `persistence.ts`: `isRaidReport` prüft Tag, `defended`, `weaponsLost` und die
+  Beute (nur bekannte Ressourcen, ganze Zahlen ≥ 0). `lastRaid` darf `null` sein.
+- Refresh während einer HCW-Reise: läuft über `failExpedition` → kein Angriff.
+
+**Tests:** 3 neue in `persistence.test.ts` (kaputter Raid-Bericht, alter
+Version-1-Spielstand, abgebrochene HCW-Reise ohne Angriff). 96 grün, Build grün.
+
+**Browser-Test:** Version-1-Spielstand in `localStorage` → "The old records were
+unreadable", neue Kolonie. HCW mit 0 Waffen → Holz 23 → 12, Stein 11 → 6
+(Hälfte weg), `lastRaid` steht im Spielstand. Noch keine Anzeige – kommt in Schritt 5.

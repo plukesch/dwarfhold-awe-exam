@@ -40,6 +40,8 @@ export interface ColonyState {
   // every expedition that has left and not yet returned (D4).
   // A list, because several dwarves may travel at the same time.
   expeditions: ActiveExpedition[];
+  // the most recent attack on Stonehome, or null if there was none yet (D7)
+  lastRaid: RaidReport | null;
 }
 
 // D4: one running expedition. The id is created by us when the dwarf departs

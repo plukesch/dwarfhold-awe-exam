@@ -14,6 +14,7 @@ const colony = (resources: Partial<Resources> = {}): ColonyState => ({
   starving: false,
   forgeTask: null,
   expeditions: [],
+  lastRaid: null,
 });
 
 describe("defending Stonehome (D7)", () => {
@@ -24,10 +25,10 @@ describe("defending Stonehome (D7)", () => {
 
   it("a defense breaks one weapon and nothing is looted", () => {
     const before = colony({ weapons: 3 });
-    const { colony: after, report } = resolveRaid(before);
+    const after = resolveRaid(before);
 
     expect(after.resources).toEqual({ ...before.resources, weapons: 2 });
-    expect(report).toEqual({ day: 20, defended: true, weaponsLost: 1, loot: {} });
+    expect(after.lastRaid).toEqual({ day: 20, defended: true, weaponsLost: 1, loot: {} });
   });
 });
 
@@ -37,10 +38,10 @@ describe("a raid without defense (D7)", () => {
   });
 
   it("the loot is removed; tools and weapons stay", () => {
-    const { colony: after, report } = resolveRaid(colony({ weapons: 2 }));
+    const after = resolveRaid(colony({ weapons: 2 }));
 
     expect(after.resources).toEqual({ wood: 5, stone: 4, food: 3, tools: 2, weapons: 2 });
-    expect(report).toEqual({
+    expect(after.lastRaid).toEqual({
       day: 20,
       defended: false,
       weaponsLost: 0,
@@ -49,7 +50,7 @@ describe("a raid without defense (D7)", () => {
   });
 
   it("an empty store loses nothing and never goes negative", () => {
-    const { colony: after } = resolveRaid(colony({ wood: 0, stone: 1, food: 0 }));
+    const after = resolveRaid(colony({ wood: 0, stone: 1, food: 0 }));
     expect(after.resources).toMatchObject({ wood: 0, stone: 1, food: 0 });
   });
 

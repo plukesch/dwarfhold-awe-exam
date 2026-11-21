@@ -1,4 +1,4 @@
-import type { ColonyState, RaidReport, ResourceKey, Resources } from "../types";
+import type { ColonyState, ResourceKey, Resources } from "../types";
 
 // D7: After a successful return from a hostile destination (HCW), the
 // lecturers follow the traveller home and attack Stonehome.
@@ -29,22 +29,17 @@ export function raidLoot(resources: Resources): Partial<Resources> {
 }
 
 // The attack itself: either a defense (one weapon breaks, nothing is lost)
-// or a raid (the loot is removed from the store). Returns the new colony and
-// a report, so the game can show what happened.
-export function resolveRaid(state: ColonyState): {
-  colony: ColonyState;
-  report: RaidReport;
-} {
+// or a raid (the loot is removed from the store). The report is stored in
+// `lastRaid`, so the game can show what happened.
+export function resolveRaid(state: ColonyState): ColonyState {
   if (canDefend(state.resources)) {
     return {
-      colony: {
-        ...state,
-        resources: {
-          ...state.resources,
-          weapons: state.resources.weapons - WEAPONS_LOST_ON_DEFENSE,
-        },
+      ...state,
+      resources: {
+        ...state.resources,
+        weapons: state.resources.weapons - WEAPONS_LOST_ON_DEFENSE,
       },
-      report: {
+      lastRaid: {
         day: state.day,
         defended: true,
         weaponsLost: WEAPONS_LOST_ON_DEFENSE,
@@ -60,7 +55,8 @@ export function resolveRaid(state: ColonyState): {
   }
 
   return {
-    colony: { ...state, resources },
-    report: { day: state.day, defended: false, weaponsLost: 0, loot },
+    ...state,
+    resources,
+    lastRaid: { day: state.day, defended: false, weaponsLost: 0, loot },
   };
 }
