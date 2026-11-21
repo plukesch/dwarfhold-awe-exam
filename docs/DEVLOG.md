@@ -26,6 +26,11 @@ So arbeiten wir größtenteils in verschiedenen Dateien.
 | Wie viele Aufträge gleichzeitig? | Nur einer – Stonehome hat genau eine Schmiede. | `forgeTask` in `types.ts` |
 | Wann wird das Material abgezogen? | Beim Start. Der Zwerg holt sich die Materialien aus dem Lager und geht damit zur Schmiede. | `startForging` in `game/forge.ts` |
 | Wer darf schmieden? | Jeder Zwerg, der zu Hause ist (`idle` oder `working`). Wer unterwegs ist oder schon schmiedet, nicht. | `canForge` in `game/forge.ts` |
+| Tool auf Expedition? | Das Tool bleibt beim Zwerg und reist mit. Unterwegs bringt es keinen Bonus (er ist nicht `working`), nach der Rückkehr wirkt es sofort wieder. | `hasTool` bleibt unverändert (D4) |
+| Mehrere Expeditionen gleichzeitig? | Ja – jeder Zwerg, der zu Hause ist, kann los. Ein Zwerg kann aber nur auf einer Expedition sein. | `ColonyState.expeditions` (Liste) |
+| Pause und Expedition? | Eine Expedition ist ein Request in Echtzeit und läuft auch bei pausierter Kolonie weiter. | `sendExpedition` im Provider |
+| Was passiert bei einem Fehlschlag? | Der Zwerg kommt sofort ohne Beute zurück und arbeitet in seinem alten Job weiter. Das gilt für jeden Fehler: gesperrte Route, Server nicht erreichbar, unlesbare Antwort, Timeout. | `failExpedition`, `api.ts` |
+| Wie lange warten wir auf die Antwort? | Höchstens 8 Sekunden (der Server braucht maximal 5). Danach gilt die Expedition als gescheitert. | `EXPEDITION_TIMEOUT_MS` in `api.ts` |
 
 ## Log
 
@@ -353,3 +358,167 @@ wurde also mitgestreckt. Mit `align-items: start` behält jedes Panel seine eige
 Höhe. Außerdem hat die Status-Spalte im Roster jetzt eine feste Breite, damit das
 Dropdown nicht springt, wenn der Status zwischen IDLE, WORKING und CRAFTING
 wechselt.
+
+### D4 – Schritt 1: Datenmodell für laufende Expeditionen (Omar)
+
+**Problem:** Im Starter gab es für Expeditionen nur ein globales
+`expeditionPending`. Der State wusste nicht, *welcher* Zwerg *wohin* unterwegs
+ist. Deshalb konnte man nicht sicher sagen, ob eine Antwort vom Server noch
+gültig ist – eine doppelte oder verspätete Antwort hätte die Belohnung ein
+zweites Mal gebucht.
+
+**Entscheidungen** (siehe Tabelle oben):
+- Das Tool bleibt beim Zwerg und reist mit. Das passt zu D2: Tools werden nur zu
+  Hause getauscht (`canReturnTool` prüft `isAtHome`), und unterwegs gibt es
+  ohnehin keinen Bonus, weil der Zwerg nicht `working` ist.
+- Mehrere Zwerge dürfen gleichzeitig unterwegs sein.
+- Pause hält eine Expedition nicht an, weil sie ein Request in Echtzeit ist.
+
+**Code:**
+- `types.ts`: `DestinationId` für die Ziele, `ActiveExpedition` (`id`,
+  `dwarfId`, `destination`, `departedOnDay`) und im `ColonyState` die Liste
+  `expeditions`. Die `id` erzeugen wir selbst beim Aufbruch. Später wird ein
+  Ergebnis nur gebucht, solange diese `id` noch in der Liste steht – danach wird
+  sie entfernt. So kann eine Belohnung nicht zweimal gutgeschrieben werden.
+- Eine Liste statt einem Feld wie `forgeTask`, weil es nur eine Schmiede gibt,
+  aber mehrere Expeditionen gleichzeitig laufen können.
+- `ColonyProvider.tsx`: Startzustand mit `expeditions: []`. In Patricks drei
+  Test-Dateien steht dieselbe Zeile im Basis-State, damit die Typen stimmen.
+
+Am Spielverhalten ändert sich in diesem Schritt noch nichts.
+
+### D4 – Schritt 2: Expeditionslogik als reine Funktionen (Omar)
+
+Die Regeln für Expeditionen stehen jetzt in einer eigenen Datei
+`src/game/expeditions.ts` – ohne React, ohne Zufall, genau wie Patricks
+`forge.ts`. Im Spiel ist das noch nicht eingebaut, das kommt in Schritt 3.
+
+**`game/expeditions.ts`:**
+- `destinations` – die Ziele als Daten (Name, kurze Beschreibung) für das UI.
+  Was man dort findet, entscheidet weiterhin der Server.
+- `canSendOnExpedition(dwarf)` – los darf nur, wer zu Hause ist (`isAtHome`).
+  Damit kann ein schmiedender Zwerg nicht mehr losgeschickt werden. Vorher wäre
+  sein Status von `crafting` auf `expedition` überschrieben worden, und
+  `finishForging` hätte ihn später auf `working` gesetzt, obwohl er unterwegs ist.
+- `expeditionProblem(state, dwarfId, destination)` – gibt den Grund als Text
+  zurück (kein Scout, Zwerg beschäftigt, Ziel unbekannt) oder `null`.
+- `departExpedition(state, id, dwarfId, destination)` – Status `expedition`,
+  Eintrag in `expeditions`. Job und Tool bleiben beim Zwerg. Ungültig →
+  unveränderter State, also kann derselbe Zwerg nicht zweimal losgehen.
+- `completeExpedition(state, id, rewards)` – Beute ins Lager, Zwerg zurück an
+  seinen Job (oder `idle`), Eintrag aus der Liste entfernt.
+- `failExpedition(state, id)` – genauso, nur ohne Beute. Der Zwerg bleibt also
+  nie mehr für immer "away".
+
+Beide Rückkehr-Funktionen laufen über `endExpedition`: Steht die `id` nicht
+(mehr) in der Liste, kommt der State unverändert zurück. Kommt eine Antwort
+doppelt oder kommt nach einem Fehlschlag noch ein Erfolg, wird nichts gebucht.
+Außerdem werden nur echte, positive Mengen bekannter Ressourcen gebucht – eine
+kaputte Server-Antwort kann das Lager also nicht negativ machen.
+
+**Tests:** `game/expeditions.test.ts` mit 13 Tests, u. a. "Belohnung genau
+einmal", "Fehlschlag bringt den Zwerg ohne Beute zurück", "schmiedender Zwerg
+darf nicht los" und "unterwegs keine Produktion, aber Essen".
+
+### D4 – Schritt 3: Expeditionen im Provider eingebaut (Omar)
+
+**Problem:** `sendExpedition` im Starter hat den Status direkt umgeschrieben,
+nichts geprüft und bei einem Fehler den Zwerg nicht zurückgeholt. Belohnungen
+wurden ungeprüft addiert, und `expeditionPending` war ein globaler Wert für alle.
+
+**Lösung:** `sendExpedition` ruft jetzt nur noch die reinen Funktionen aus
+Schritt 2 auf:
+1. `expeditionProblem` auf dem aktuellen Render-State – bei einem Problem kommt
+   der Grund als Warnung in die Chronicle, sonst geht es los.
+2. Eigene Id mit `crypto.randomUUID()` (der Zufall bleibt im Provider, die
+   Spiellogik bleibt deterministisch).
+3. `setColony(current => departExpedition(current, id, …))` – auf dem
+   *aktuellen* State wird nochmal geprüft.
+4. Antwort da → `completeExpedition`, Fehler → `failExpedition`. Beide nur über
+   `setColony(current => …)`, also nie mit veraltetem State.
+
+**Doppelklick:** Zwei Klicks, bevor React neu rendert, sehen beide noch den
+alten State. Der zweite `departExpedition` würde zwar nichts ändern (Zwerg ist
+schon unterwegs), aber es gäbe einen zweiten Request und ein doppeltes
+"departed" in der Chronicle. Deshalb merkt sich ein `useRef`-Set `departing`,
+für welche Zwerge gerade ein Request läuft. Ein Ref ändert sich sofort, nicht
+erst beim nächsten Render. Im `finally` wird der Zwerg wieder entfernt.
+
+**`expeditionPending` ist weg.** Ob man losschicken kann, entscheidet jetzt
+`expeditionProblem` pro Zwerg – mehrere Zwerge können gleichzeitig reisen.
+`sendExpedition` bekommt als Ziel den Typ `DestinationId` statt `string`.
+
+**Falscher Tag in der Chronicle:** `log()` hat den Tag aus `colony.day` des
+Renders genommen, in dem die Funktion erzeugt wurde. Nach einem `await` ist das
+der Tag der *Abreise* – kam die Antwort nach einem Tageswechsel zurück, stand
+in der Chronicle ein alter Tag. Jetzt merkt sich ein Ref `today` den aktuellen
+Tag, und `log()` liest daraus (kleine Änderung an Patricks Helper). Der Effect
+dafür steht als erster im Provider, damit die anderen Effects (Hunger, Schmiede)
+schon mit dem neuen Tag loggen.
+
+Außerdem kommt die Chronicle-Id nicht mehr vom Server (`exp-17` …), die nach
+einem Server-Neustart wieder von vorne zählt und doppelte React-Keys erzeugt
+hätte.
+
+### D4 – Schritt 4: Timeout und Antwortprüfung in `api.ts` (Omar)
+
+**Problem:** `beginExpedition` hat nur den Normalfall abgedeckt:
+- Läuft die API nicht, liefert der Vite-Proxy eine HTML-Fehlerseite.
+  `response.json()` ist dann selbst abgestürzt, und in der Chronicle stand eine
+  technische Meldung wie "Unexpected token '<'".
+- Hängt der Server, hätte der Zwerg ewig auf die Antwort gewartet.
+- Was der Server geschickt hat, wurde ungeprüft als `ExpeditionResult` behandelt.
+
+**Lösung:**
+- **Timeout:** `AbortSignal.timeout(8000)`. Der Server antwortet nach höchstens
+  5 Sekunden, 8 Sekunden lassen also genug Luft. Danach gilt die Expedition als
+  gescheitert und der Zwerg kommt ohne Beute zurück.
+- `readJson` liest den Body und gibt `null` zurück, wenn es kein JSON ist.
+- `isExpeditionResult` prüft die Form der Antwort (`expeditionId`, `status`,
+  `message`, `rewards` als Objekt). Die einzelnen Mengen prüft weiterhin
+  `addRewards` beim Buchen – zwei Stellen, weil das eine die Form der Antwort
+  ist und das andere eine Spielregel ("Lager wird nie negativ").
+- Jeder Fehlerfall wird zu einem `Error` mit lesbarem Text. Der Provider muss
+  deshalb nur einen Fall kennen: `catch` → `failExpedition`.
+
+**Tests:** `src/api.test.ts` ersetzt `fetch` mit `vi.stubGlobal`, braucht also
+keinen laufenden Server. Getestet: Erfolg, Fehlertext vom Server, HTML-Fehlerseite,
+falsche Form, Netzwerkfehler, Timeout.
+
+### D4 – Schritt 5: Expeditions-Panel (Omar)
+
+Das Panel steht jetzt in einer eigenen Komponente `ExpeditionPanel.tsx`. Vorher
+war es in `ColonyPage.tsx` direkt neben Patricks Shift Ledger – so arbeiten wir
+nicht mehr in derselben Datei.
+
+- **Nur verfügbare Zwerge:** Im Scout-Dropdown sind beschäftigte Zwerge
+  ausgegraut, mit Grund dahinter ("on the road", "at the forge").
+- **Button:** gesperrt, sobald `expeditionProblem` einen Grund findet – dieselbe
+  Funktion, die auch der Provider verwendet. Der Grund steht unter dem Button.
+- **Ziele** kommen aus `destinations`, unter dem Dropdown steht die Beschreibung.
+- **"On the road":** Liste aller laufenden Expeditionen mit Zwerg, Ziel und
+  Abreisetag (⚒️, wenn das Tool mitreist).
+- **Regeltext:** mehrere gleichzeitig, aber jeder Zwerg nur einmal; unterwegs
+  keine Arbeit, aber Essen; Tool reist mit ohne Bonus; Fehlschlag = ohne Beute
+  zurück; Pause hält Reisen nicht an.
+
+**Im Browser getestet:** Doppelklick auf "Send" → nur eine Abreise in der
+Chronicle. Dori (Crystal Cave) und Yrsa (Blocked Pass) gleichzeitig unterwegs →
+Dori bringt +8 Stein und +1 Tool genau einmal, Yrsa kommt ohne Beute zurück und
+arbeitet wieder. Läuft die API nicht, kommt der Zwerg mit "Expedition failed
+(500)" zurück.
+
+### D4 – Fazit
+
+D4 ist fertig. Ein Zwerg auf Expedition ist sichtbar unterwegs und kann in der
+Zeit nichts anderes tun. Jede Expedition hat eine eigene Id, und das Ergebnis
+wird nur gebucht, solange diese Id noch in `colony.expeditions` steht – so gibt
+es die Belohnung genau einmal. Jeder Fehler (Route gesperrt, Server weg,
+Timeout, kaputte Antwort) bringt den Zwerg ohne Beute zurück. Doppelklicks und
+mehrere gleichzeitige Expeditionen erzeugen keinen widersprüchlichen Zustand.
+
+**Für D5:** `expeditions` muss gespeichert werden. Nach einem Refresh gibt es die
+laufenden Requests nicht mehr – dafür brauchen wir eine Regel (Vorschlag: alle
+Reisenden kommen ohne Beute zurück, über `failExpedition`).
+**Für D7/D6:** Überfall und neue Spezies hängen sich an den Erfolgsfall
+(`completeExpedition`), damit ein Fehlschlag sie nie auslöst.

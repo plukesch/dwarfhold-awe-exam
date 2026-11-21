@@ -1,6 +1,6 @@
-import { useState } from "react";
 import { Chronicle } from "../components/Chronicle";
 import { DwarfRoster } from "../components/DwarfRoster";
+import { ExpeditionPanel } from "../components/ExpeditionPanel";
 import {
   dailyMeals,
   dailyProduction,
@@ -19,14 +19,11 @@ export function ColonyPage() {
   const {
     colony,
     activities,
-    expeditionPending,
     assignDwarf,
     equipToolTo,
     returnToolFrom,
     sendExpedition,
   } = useColony();
-  const [destination, setDestination] = useState("crystal-cave");
-  const [expeditionDwarf, setExpeditionDwarf] = useState("dwarf-3");
 
   // Same calculation as the simulation uses -> ledger and reality always match.
   const produced = dailyProduction(colony.dwarves, colony.starving);
@@ -122,52 +119,7 @@ export function ColonyPage() {
       </section>
 
       <aside className="side-stack">
-        <section className="panel expedition">
-          <header>
-            <div>
-              <small>BEYOND THE GATE</small>
-              <h2>Expedition</h2>
-            </div>
-            <b>🗺️</b>
-          </header>
-
-          <label>
-            Scout
-            <select
-              value={expeditionDwarf}
-              onChange={(event) => setExpeditionDwarf(event.target.value)}
-            >
-              {colony.dwarves.map((dwarf) => (
-                <option key={dwarf.id} value={dwarf.id}>
-                  {dwarf.name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label>
-            Destination
-            <select
-              value={destination}
-              onChange={(event) => setDestination(event.target.value)}
-            >
-              <option value="crystal-cave">Crystal Cave</option>
-              <option value="old-mine">The Old Mine</option>
-              <option value="blocked-pass">Blocked Pass</option>
-            </select>
-          </label>
-
-          <button
-            disabled={expeditionPending}
-            onClick={() => sendExpedition(expeditionDwarf, destination)}
-          >
-            {expeditionPending ? "Beyond the gate…" : "Send expedition"}
-          </button>
-          <p>
-            A result returns in one request. The selected dwarf is unavailable
-            while travelling.
-          </p>
-        </section>
+        <ExpeditionPanel colony={colony} onSend={sendExpedition} />
 
         <Chronicle activities={activities} />
       </aside>

@@ -47,3 +47,15 @@
 .dashboard{align-items:start}
 .dwarf{grid-template-columns:61px 1fr 70px}
 .dwarf .status{justify-self:end}
+/* D4 expedition panel: destination text, reason why sending is blocked, travellers */
+.expedition .destination-note{margin:-2px 13px 6px;font:11px Barlow Condensed;color:#806e58}
+.expedition .expedition-problem{margin:0 13px 6px;font:11px Barlow Condensed;color:#d87f63}
+.expedition button:disabled{cursor:not-allowed}
+.on-the-road{margin:10px 13px;padding-top:8px;border-top:1px solid #3b3023}
+.on-the-road p{margin:4px 0 0;font:12px Barlow Condensed;color:#806e58}
+.on-the-road ul{list-style:none;margin:4px 0 0;padding:0}
+.on-the-road li{display:flex;flex-direction:column;padding:5px 0;border-bottom:1px solid #2c241a}
+.on-the-road li:last-child{border:0}
+.on-the-road li strong{font:700 13px Almendra;color:#d9a34f}
+.on-the-road li span{font:11px Barlow Condensed;color:#a8977c}
+.expedition .rule-note{padding:6px 13px 0;font:11px Barlow Condensed;line-height:1.4}
