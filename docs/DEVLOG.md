@@ -35,6 +35,11 @@ So arbeiten wir größtenteils in verschiedenen Dateien.
 | Schmiede und Refresh? | Der Auftrag läuft einfach weiter, weil er an Spieltagen hängt und nicht an einem Request. Das Material ist schon bezahlt. | `resumeAfterRefresh` (lässt `forgeTask` unverändert) |
 | Was wird gespeichert? | Der ganze `ColonyState` mit Versionsnummer. Chronicle und Pause nicht – die Chronicle ist nur ein Log, und nach dem Laden läuft das Spiel wieder. | `serializeSave` in `game/persistence.ts` |
 | Kaputter oder alter Spielstand? | Wird komplett ignoriert, es startet eine neue Kolonie. Kein "halb laden". | `parseSave` in `game/persistence.ts` |
+| Welches Ziel löst den Angriff aus? | **HCW** – bringt 6 Holz + 4 Nahrung, aber die **Lektoren** folgen dem Zwerg nach Hause. | `hostile: true` in `destinations` (`game/expeditions.ts`), `server/index.js` |
+| Wann greifen die Lektoren an? | Sofort bei der erfolgreichen Rückkehr, nachdem die Beute gebucht ist. Ein Fehlschlag (auch durch Refresh) löst nie einen Angriff aus. Auch während der Pause. | `completeExpedition` + `game/raid.ts` (D7 Schritt 2–3) |
+| Ab wann verteidigt sich Stonehome? | Ab **3 Waffen** im Lager. | `game/raid.ts` (D7 Schritt 2) |
+| Verbraucht die Verteidigung Waffen? | Ja, **1 Waffe bricht** pro abgewehrtem Angriff. | `game/raid.ts` (D7 Schritt 2) |
+| Was wird geplündert? | Ohne Verteidigung nehmen die Lektoren **die Hälfte (abgerundet)** von Holz, Stein und Nahrung. Fest berechnet, nie negativ. | `game/raid.ts` (D7 Schritt 2) |
 
 ## Log
 
@@ -630,3 +635,23 @@ bleibt einzeilig. Die Refresh-Fälle wurden schon in Schritt 4 im Browser getest
 
 **Für D6:** Sobald die neue Spezies `ColonyState` oder `Dwarf` ändert, muss
 `SAVE_VERSION` erhöht und `isDwarf`/`isColony` in `persistence.ts` angepasst werden.
+
+### D7 – Schritt 1: Neues Ziel HCW (Omar)
+
+D7 braucht ein Ziel, dessen Erfolg Stonehome verändert. Wir nennen es **HCW**:
+Dort gibt es gute Vorräte (+6 Holz, +4 Nahrung), aber die Lektoren folgen dem
+Zwerg nach Hause und greifen an (ab Schritt 2/3).
+
+- `types.ts`: `DestinationId` um `"hcw"` erweitert.
+- `game/expeditions.ts`: Eintrag in `destinations` mit neuem optionalem Feld
+  `hostile: true`. So steht an **einer** Stelle, welches Ziel einen Angriff
+  auslöst – die Raid-Logik fragt später nur `destinations[...].hostile` ab und
+  kennt keine Ziel-Namen. Die Beschreibung warnt den Spieler schon im Dropdown.
+- `server/index.js`: Antwort für `hcw`. Ohne sie gäbe der Server 404 und jede
+  Reise dorthin würde scheitern.
+- D5 musste nicht angepasst werden: `parseSave` prüft Ziele über
+  `isDestination`, das kennt `hcw` automatisch. Die Form von `ColonyState`
+  ändert sich nicht, deshalb bleibt `SAVE_VERSION` bei 1.
+
+**Tests:** 2 neue in `expeditions.test.ts` (Abreise nach HCW, nur HCW ist
+`hostile`), 81 grün, Build grün. Server-Antwort per `curl` geprüft.

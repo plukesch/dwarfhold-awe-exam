@@ -108,6 +108,12 @@ Commands: `npm install`, `npm run dev` (web + api), `npm test`, `npm run build`
   expedition panel, forge note on `ForgePage` (Patrick's file), footer
   "💾 Saved automatically" in `Layout.tsx`.
   Team decisions: chronicle and pause are not saved; no "New game" button.
+- D7 (in progress, branch `D7`): new destination `hcw` ("HCW", rewards 6 wood
+  + 4 food from the server) with `hostile: true` in `destinations`. After a
+  SUCCESSFUL return the lecturers follow and attack (not built yet, step 2–3
+  in `src/game/raid.ts`). Team decisions: attack right on return, never after
+  a failure/refresh, also while paused; defense from 3 weapons, 1 weapon breaks
+  per defended raid; otherwise half (rounded down) of wood, stone, food is looted.
 - Provider helper `log(message, tone)` adds a chronicle entry – use it instead of
   writing `setActivities(...)` by hand. It takes the day from the `today` ref
   (always the current day, also after an `await`).

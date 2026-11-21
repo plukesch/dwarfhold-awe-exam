@@ -13,6 +13,9 @@ export interface Destination {
   id: DestinationId;
   name: string;
   description: string;
+  // D7: true = after a successful return, enemies follow the traveller home
+  // and attack Stonehome. A failed journey never leads them here.
+  hostile?: boolean;
 }
 
 // All places beyond the gate. The rewards are decided by the server
@@ -32,6 +35,13 @@ export const destinations: Record<DestinationId, Destination> = {
     id: "blocked-pass",
     name: "Blocked Pass",
     description: "Rumoured to be sealed by rockfall.",
+  },
+  hcw: {
+    id: "hcw",
+    name: "HCW",
+    description:
+      "Well-stocked halls of learning – but the lecturers will follow you home and attack.",
+    hostile: true,
   },
 };
 

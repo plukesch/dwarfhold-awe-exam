@@ -5,6 +5,7 @@ import { startForging } from "./forge";
 import {
   completeExpedition,
   departExpedition,
+  destinations,
   expeditionProblem,
   failExpedition,
 } from "./expeditions";
@@ -109,5 +110,19 @@ describe("expeditions and the daily simulation", () => {
     const next = advanceDay(departExpedition(colony(), "e1", "d1", "crystal-cave"));
     expect(next.resources.stone).toBe(5);
     expect(next.resources.food).toBe(9);
+  });
+});
+
+describe("HCW – the hostile destination (D7)", () => {
+  it("is on the map and a dwarf can travel there", () => {
+    const next = departExpedition(colony(), "e1", "d1", "hcw");
+    expect(next.expeditions).toEqual([
+      { id: "e1", dwarfId: "d1", destination: "hcw", departedOnDay: colony().day },
+    ]);
+  });
+
+  it("is the only destination marked hostile", () => {
+    const hostile = Object.values(destinations).filter((place) => place.hostile);
+    expect(hostile.map((place) => place.id)).toEqual(["hcw"]);
   });
 });

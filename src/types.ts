@@ -4,7 +4,7 @@ export type JobType = "woodcutting" | "mining" | "farming" | null;
 export type DwarfStatus = "idle" | "working" | "expedition" | "crafting";
 export type RecipeId = "tool" | "weapon";
 // D4: all places a dwarf can travel to (details in game/expeditions.ts)
-export type DestinationId = "crystal-cave" | "old-mine" | "blocked-pass";
+export type DestinationId = "crystal-cave" | "old-mine" | "blocked-pass" | "hcw";
 
 // tools   = tools lying in the store (NOT equipped). Equipped tools are counted
 //           via Dwarf.hasTool -> total tools = resources.tools + equipped dwarves.
