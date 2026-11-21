@@ -25,6 +25,7 @@ const busyColony = (): ColonyState => ({
   starving: true,
   forgeTask: { recipeId: "weapon", dwarfId: "d2", completesOnDay: 12 },
   expeditions: [{ id: "e1", dwarfId: "d1", destination: "crystal-cave", departedOnDay: 10 }],
+  lastRaid: { day: 8, defended: false, weaponsLost: 0, loot: { wood: 3, stone: 0, food: 6 } },
 });
 
 // Saves `colony`, but lets a test break something first.
@@ -77,6 +78,20 @@ describe("saving and loading (D5)", () => {
     expect(parseSave(saveWith((c) => (c.expeditions[0].destination = "moon")))).toBeNull();
   });
 
+  it("a broken raid report -> null (D7)", () => {
+    expect(parseSave(saveWith((c) => delete c.lastRaid))).toBeNull();
+    expect(parseSave(saveWith((c) => (c.lastRaid.defended = "yes")))).toBeNull();
+    expect(parseSave(saveWith((c) => (c.lastRaid.loot.food = -6)))).toBeNull();
+    expect(parseSave(saveWith((c) => (c.lastRaid.loot.gold = 5)))).toBeNull();
+    expect(parseSave(saveWith((c) => (c.lastRaid = null)))).not.toBeNull();
+  });
+
+  it("a save from before D7 (version 1, no lastRaid) -> null", () => {
+    const old: Partial<ColonyState> = structuredClone(busyColony());
+    delete old.lastRaid;
+    expect(parseSave(JSON.stringify({ version: 1, colony: old }))).toBeNull();
+  });
+
   it("contradicting data -> null", () => {
     // travelling, but not in the expedition list
     expect(parseSave(saveWith((c) => (c.expeditions = [])))).toBeNull();
@@ -118,6 +133,14 @@ describe("work interrupted by a refresh (D5 policy)", () => {
     const result = resumeAfterRefresh(colony);
     expect(result.colony).toBe(colony);
     expect(result.returnedHome).toEqual([]);
+  });
+
+  it("an interrupted journey to HCW brings no attack (D7)", () => {
+    const colony = busyColony();
+    colony.expeditions[0].destination = "hcw";
+    const { colony: resumed } = resumeAfterRefresh(colony);
+    expect(resumed.lastRaid).toEqual(colony.lastRaid);
+    expect(resumed.resources).toEqual(colony.resources);
   });
 
   it("a restored save can be resumed and saved again", () => {

@@ -13,6 +13,7 @@ import {
   startForging,
   type RecipeId,
 } from "../game/forge";
+import { describeRaid } from "../game/raid";
 import {
   parseSave,
   resumeAfterRefresh,
@@ -78,6 +79,7 @@ const initialState: ColonyState = {
   starving: false,
   forgeTask: null,
   expeditions: [],
+  lastRaid: null,
 };
 
 // D5: Browser storage can throw (blocked in some private modes, or full).
@@ -208,6 +210,21 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
       "good",
     );
   }, [colony.forgeTask]);
+
+  // D7: Chronicle entry when the lecturers attacked (same idea as the forge:
+  // completeExpedition decides, the effect only reports it). Starts with the
+  // loaded value, so a raid from before a refresh is not reported again.
+  const previousRaid = useRef(colony.lastRaid);
+  useEffect(() => {
+    if (colony.lastRaid === previousRaid.current) return;
+    previousRaid.current = colony.lastRaid;
+    if (!colony.lastRaid) return;
+
+    log(
+      `⚔️ The lecturers followed the scout home from HCW! ${describeRaid(colony.lastRaid)}`,
+      colony.lastRaid.defended ? "good" : "warning",
+    );
+  }, [colony.lastRaid]);
 
   // Adds one entry to the Hold Chronicle (newest first, max. 6 entries).
   function log(message: string, tone?: Activity["tone"]) {

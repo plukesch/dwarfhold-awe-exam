@@ -5,6 +5,7 @@ import type {
   ColonyState,
   Dwarf,
   ForgeTask,
+  RaidReport,
   ResourceKey,
 } from "../types";
 
@@ -17,7 +18,8 @@ export const SAVE_KEY = "dwarfhold-save";
 // Raise this number whenever the shape of ColonyState changes (e.g. D6 adds
 // the new species). An older save then no longer matches and the game safely
 // starts fresh instead of loading half-fitting data.
-export const SAVE_VERSION = 1;
+// 1 = D5, 2 = D7 added `lastRaid`.
+export const SAVE_VERSION = 2;
 
 // What is stored: the version plus the whole colony state.
 export function serializeSave(colony: ColonyState): string {
@@ -93,6 +95,21 @@ function isExpedition(value: unknown): value is ActiveExpedition {
   );
 }
 
+// D7: the report of the last attack. The loot may only contain known
+// resources with whole, non-negative amounts.
+function isRaidReport(value: unknown): value is RaidReport {
+  return (
+    isRecord(value) &&
+    isCount(value.day) &&
+    typeof value.defended === "boolean" &&
+    isCount(value.weaponsLost) &&
+    isRecord(value.loot) &&
+    Object.entries(value.loot).every(
+      ([key, amount]) => resourceKeys.includes(key as ResourceKey) && isCount(amount),
+    )
+  );
+}
+
 function isColony(value: unknown): value is ColonyState {
   return (
     isRecord(value) &&
@@ -104,7 +121,8 @@ function isColony(value: unknown): value is ColonyState {
     typeof value.starving === "boolean" &&
     (value.forgeTask === null || isForgeTask(value.forgeTask)) &&
     Array.isArray(value.expeditions) &&
-    value.expeditions.every(isExpedition)
+    value.expeditions.every(isExpedition) &&
+    (value.lastRaid === null || isRaidReport(value.lastRaid))
   );
 }
 

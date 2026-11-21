@@ -95,7 +95,7 @@ Commands: `npm install`, `npm run dev` (web + api), `npm test`, `npm run build`
   Patrick's Shift Ledger in `ColonyPage.tsx`) – busy dwarves greyed out with a
   reason, button disabled via `expeditionProblem`, "On the road" list, rule text.
 - D5 (done, branch `D5`): pure logic in `src/game/persistence.ts`:
-  `SAVE_KEY`, `SAVE_VERSION` (= 1, raise it whenever `ColonyState` changes, e.g.
+  `SAVE_KEY`, `SAVE_VERSION` (= 2 since D7, raise it whenever `ColonyState` changes, e.g.
   D6), `serializeSave`, `parseSave(raw)` -> `ColonyState | null` (null for every
   problem: not JSON, other version, wrong/missing fields, negative or broken
   numbers, contradicting data). `resumeAfterRefresh(colony)` applies the refresh
@@ -108,6 +108,20 @@ Commands: `npm install`, `npm run dev` (web + api), `npm test`, `npm run build`
   expedition panel, forge note on `ForgePage` (Patrick's file), footer
   "💾 Saved automatically" in `Layout.tsx`.
   Team decisions: chronicle and pause are not saved; no "New game" button.
+- D7 (done, branch `D7`): new destination `hcw` ("HCW", rewards 6 wood
+  + 4 food from the server) with `hostile: true` in `destinations`. After a
+  SUCCESSFUL return the lecturers follow and attack. Rules in
+  `src/game/raid.ts`: `canDefend`, `raidLoot`, `resolveRaid(state)` -> colony
+  with `lastRaid: RaidReport` set. `completeExpedition` calls it after booking
+  the loot if `destinations[..].hostile` (failExpedition never does).
+  `ColonyState.lastRaid: RaidReport | null` – add `lastRaid: null` to new test
+  fixtures. Persisted: `SAVE_VERSION` = 2, checked by `isRaidReport`.
+  UI: `components/RaidBanner.tsx` (3 days after a raid, in `Layout.tsx`),
+  chronicle effect on `lastRaid` in the provider, forecast + rule text in the
+  expedition panel, "3 needed to defend" on the weapons tile (`ResourceBar`).
+  Texts use `describeRaid` and the constants from `raid.ts`. Team decisions: attack right on return, never after
+  a failure/refresh, also while paused; defense from 3 weapons, 1 weapon breaks
+  per defended raid; otherwise half (rounded down) of wood, stone, food is looted.
 - Provider helper `log(message, tone)` adds a chronicle entry – use it instead of
   writing `setActivities(...)` by hand. It takes the day from the `today` ref
   (always the current day, also after an `await`).

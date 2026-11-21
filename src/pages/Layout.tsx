@@ -1,4 +1,5 @@
 import { NavLink, Outlet } from "react-router";
+import { RaidBanner } from "../components/RaidBanner";
 import { ResourceBar } from "../components/ResourceBar";
 import { equippedToolCount } from "../game/tools";
 import { useColony } from "../state/ColonyContext";
@@ -60,6 +61,8 @@ export function Layout() {
           </div>
         </section>
       )}
+
+      <RaidBanner raid={colony.lastRaid} today={colony.day} />
 
       <Outlet />
 

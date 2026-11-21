@@ -35,6 +35,11 @@ So arbeiten wir größtenteils in verschiedenen Dateien.
 | Schmiede und Refresh? | Der Auftrag läuft einfach weiter, weil er an Spieltagen hängt und nicht an einem Request. Das Material ist schon bezahlt. | `resumeAfterRefresh` (lässt `forgeTask` unverändert) |
 | Was wird gespeichert? | Der ganze `ColonyState` mit Versionsnummer. Chronicle und Pause nicht – die Chronicle ist nur ein Log, und nach dem Laden läuft das Spiel wieder. | `serializeSave` in `game/persistence.ts` |
 | Kaputter oder alter Spielstand? | Wird komplett ignoriert, es startet eine neue Kolonie. Kein "halb laden". | `parseSave` in `game/persistence.ts` |
+| Welches Ziel löst den Angriff aus? | **HCW** – bringt 6 Holz + 4 Nahrung, aber die **Lektoren** folgen dem Zwerg nach Hause. | `hostile: true` in `destinations` (`game/expeditions.ts`), `server/index.js` |
+| Wann greifen die Lektoren an? | Sofort bei der erfolgreichen Rückkehr, nachdem die Beute gebucht ist. Ein Fehlschlag (auch durch Refresh) löst nie einen Angriff aus. Auch während der Pause. | `completeExpedition` in `game/expeditions.ts` |
+| Ab wann verteidigt sich Stonehome? | Ab **3 Waffen** im Lager. | `RAID_DEFENSE_THRESHOLD` in `game/raid.ts` |
+| Verbraucht die Verteidigung Waffen? | Ja, **1 Waffe bricht** pro abgewehrtem Angriff. | `WEAPONS_LOST_ON_DEFENSE` in `game/raid.ts` |
+| Was wird geplündert? | Ohne Verteidigung nehmen die Lektoren **die Hälfte (abgerundet)** von Holz, Stein und Nahrung. Fest berechnet, nie negativ. Tools und Waffen nehmen sie nicht. | `raidLoot` in `game/raid.ts` |
 
 ## Log
 
@@ -630,3 +635,132 @@ bleibt einzeilig. Die Refresh-Fälle wurden schon in Schritt 4 im Browser getest
 
 **Für D6:** Sobald die neue Spezies `ColonyState` oder `Dwarf` ändert, muss
 `SAVE_VERSION` erhöht und `isDwarf`/`isColony` in `persistence.ts` angepasst werden.
+
+### D7 – Schritt 1: Neues Ziel HCW (Omar)
+
+D7 braucht ein Ziel, dessen Erfolg Stonehome verändert. Wir nennen es **HCW**:
+Dort gibt es gute Vorräte (+6 Holz, +4 Nahrung), aber die Lektoren folgen dem
+Zwerg nach Hause und greifen an (ab Schritt 2/3).
+
+- `types.ts`: `DestinationId` um `"hcw"` erweitert.
+- `game/expeditions.ts`: Eintrag in `destinations` mit neuem optionalem Feld
+  `hostile: true`. So steht an **einer** Stelle, welches Ziel einen Angriff
+  auslöst – die Raid-Logik fragt später nur `destinations[...].hostile` ab und
+  kennt keine Ziel-Namen. Die Beschreibung warnt den Spieler schon im Dropdown.
+- `server/index.js`: Antwort für `hcw`. Ohne sie gäbe der Server 404 und jede
+  Reise dorthin würde scheitern.
+- D5 musste nicht angepasst werden: `parseSave` prüft Ziele über
+  `isDestination`, das kennt `hcw` automatisch. Die Form von `ColonyState`
+  ändert sich nicht, deshalb bleibt `SAVE_VERSION` bei 1.
+
+**Tests:** 2 neue in `expeditions.test.ts` (Abreise nach HCW, nur HCW ist
+`hostile`), 81 grün, Build grün. Server-Antwort per `curl` geprüft.
+
+### D7 – Schritt 2: Angriff als reine Funktionen (Omar)
+
+Neue Datei `src/game/raid.ts`, noch nicht ans Spiel angeschlossen (Schritt 3).
+
+- `RAID_DEFENSE_THRESHOLD = 3`, `WEAPONS_LOST_ON_DEFENSE = 1`,
+  `LOOTED_RESOURCES = wood, stone, food` – die Teamentscheidungen stehen als
+  Konstanten oben in der Datei, so findet man sie sofort und die UI kann
+  dieselben Zahlen anzeigen.
+- `canDefend(resources)`: genug Waffen im Lager?
+- `raidLoot(resources)`: die Hälfte, abgerundet. Abrunden heißt, es wird nie
+  mehr genommen als da ist → Ressourcen können nicht negativ werden.
+- `resolveRaid(state)` → `{ colony, report }`: entweder Verteidigung (eine Waffe
+  bricht, sonst nichts) oder Plünderung (Beute wird abgezogen). Der `report`
+  (`RaidReport` in `types.ts`: Tag, verteidigt ja/nein, verlorene Waffen, Beute)
+  ist das, was später im Banner und in der Chronicle angezeigt wird.
+- Kein Zufall: gleiche Kolonie → gleiches Ergebnis. Das verlangt D7
+  ("deterministic selection") und macht die Regel testbar.
+
+**Tests:** `game/raid.test.ts`, 7 Tests – genau an der Schwelle und eine Waffe
+darunter, Verteidigung kostet eine Waffe, Plünderung rechnet richtig ab, leeres
+Lager bleibt bei 0, deterministisch, die übergebene Kolonie wird nicht verändert.
+88 grün, Build grün.
+
+### D7 – Schritt 3: Der Angriff kommt bei der Rückkehr (Omar)
+
+- `ColonyState.lastRaid: RaidReport | null` – der letzte Angriff (oder `null`).
+  Er liegt im State, damit die Anzeige (Schritt 5) einfach den State liest und
+  `resolveRaid` eine reine Funktion bleibt. Deshalb gibt `resolveRaid(state)`
+  jetzt direkt die neue Kolonie mit gesetztem `lastRaid` zurück (statt
+  `{ colony, report }` aus Schritt 2) – ein Ergebnis, eine Stelle.
+- `completeExpedition`: erst wird die Beute gebucht und der Zwerg ist zu Hause,
+  dann – nur wenn `destinations[...].hostile` – `resolveRaid`. Die Lektoren
+  plündern also auch die frische HCW-Beute.
+- Warum die Regeln aus D7 automatisch halten:
+  - **Fehlschlag → kein Angriff:** der Angriff steht nur in
+    `completeExpedition`. `failExpedition` (Serverfehler, Timeout, Refresh)
+    kommt gar nicht daran vorbei.
+  - **Nur ein Angriff pro Reise:** unbekannte Id (Ergebnis kommt doppelt) →
+    `completeExpedition` gibt den State unverändert zurück, vor dem Angriff.
+- `lastRaid: null` in allen Test-Kolonien ergänzt, auch in Patricks
+  `forge.test.ts`, `tools.test.ts`, `simulation.test.ts` (je eine Zeile, im PR
+  erwähnen), und im `initialState` des Providers.
+
+**Tests:** 5 neue in `expeditions.test.ts` – mit 3 Waffen verteidigt, mit 2
+geplündert (inkl. frischer Beute), Fehlschlag ohne Angriff, doppeltes Ergebnis
+greift nur einmal an, andere Ziele greifen nicht an.
+
+### D7 – Schritt 4: Angriff wird mitgespeichert (Omar)
+
+`lastRaid` ist neu in `ColonyState` → die Form des Spielstands hat sich
+geändert → `SAVE_VERSION` von 1 auf **2**. Ein Spielstand von vor D7 wird damit
+sauber abgelehnt (neue Kolonie mit Hinweis), statt ohne `lastRaid` halb zu laden.
+
+- `persistence.ts`: `isRaidReport` prüft Tag, `defended`, `weaponsLost` und die
+  Beute (nur bekannte Ressourcen, ganze Zahlen ≥ 0). `lastRaid` darf `null` sein.
+- Refresh während einer HCW-Reise: läuft über `failExpedition` → kein Angriff.
+
+**Tests:** 3 neue in `persistence.test.ts` (kaputter Raid-Bericht, alter
+Version-1-Spielstand, abgebrochene HCW-Reise ohne Angriff). 96 grün, Build grün.
+
+**Browser-Test:** Version-1-Spielstand in `localStorage` → "The old records were
+unreadable", neue Kolonie. HCW mit 0 Waffen → Holz 23 → 12, Stein 11 → 6
+(Hälfte weg), `lastRaid` steht im Spielstand. Noch keine Anzeige – kommt in Schritt 5.
+
+### D7 – Schritt 5: Angriff und Regeln sichtbar (Omar)
+
+D7 verlangt, dass Ergebnis und Wirkung **klar sichtbar** sind und die
+Waffen-Regel kommuniziert wird. Alle Zahlen kommen aus den Konstanten in
+`game/raid.ts` – ändert sich eine Regel, ändert sich auch der Text.
+
+- **Vor der Entscheidung** (`ExpeditionPanel.tsx`): ist HCW gewählt, zeigt das
+  Panel "🗡️ 2 / 3 weapons – Stonehome would be looted!" bzw. "…would drive them
+  off". Der Regeltext unten erklärt Schwelle, gebrochene Waffe, Plünderung und
+  dass ein Fehlschlag nie einen Angriff auslöst.
+- **Im Lager** (`ResourceBar.tsx`): Waffen-Kachel zeigt "3 needed to defend"
+  oder "ready to defend".
+- **Nach dem Angriff:**
+  - `components/RaidBanner.tsx` (neu): rotes Banner bei Plünderung, grünes bei
+    Verteidigung, mit Tag und genauer Beute. Bleibt 3 Spieltage stehen, damit
+    man es auch auf der Forge-Seite sieht. Eingebunden in `Layout.tsx`.
+  - Chronicle: `useEffect` auf `colony.lastRaid` im Provider (gleiches Muster
+    wie "forge finished"). Der Ref startet mit dem geladenen Wert → nach einem
+    Refresh wird ein alter Angriff nicht noch einmal gemeldet.
+  - `describeRaid(report)` in `raid.ts` baut den Satz für Banner und Chronicle
+    ("…carried off 15 wood, 7 stone and 2 food", Nullen weggelassen). Reine
+    Funktion, 3 Tests.
+
+`ResourceBar.tsx` und `Layout.tsx` sind gemeinsame Dateien – je nur eine
+kleine Ergänzung, im PR erwähnen.
+
+### D7 – Schritt 6: Browser-Test und Fazit (Omar)
+
+Durchgespielt im Browser:
+1. **Plünderung:** 0 Waffen, Vorschau "0 / 3 – would be looted!". Nach der
+   Rückkehr: rotes Banner + Chronicle "carried off 15 wood, 7 stone and 2 food".
+   Die Nahrung war danach leer → am nächsten Tag Hunger (D1). Die Folge des
+   Angriffs wirkt also auch auf die Simulation.
+2. **Fehlschlag:** Request scheitert ("gate stayed shut") → `lastRaid` und
+   Ressourcen unverändert, kein Angriff.
+3. **Verteidigung:** 3 Waffen, Vorschau "3 / 3 – would drive them off". Nach der
+   Rückkehr: grünes Banner, Waffen 3 → 2, nichts geplündert.
+4. **Refresh:** Banner bleibt (gespeichert), Chronicle meldet den Angriff
+   nicht doppelt. Keine Fehler in der Konsole.
+
+**Fazit D7:** Die ganze Regel steckt in zwei reinen Funktionen
+(`completeExpedition` ruft `resolveRaid`), der Provider meldet nur. Dass ein
+Fehlschlag nie angreift, folgt aus dem Aufbau aus D4 und braucht keinen
+Extra-Code. 99 Tests, Build grün.

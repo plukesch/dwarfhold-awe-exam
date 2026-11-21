@@ -1,3 +1,4 @@
+import { RAID_DEFENSE_THRESHOLD } from "../game/raid";
 import type { Resources } from "../types";
 
 const details = {
@@ -29,6 +30,14 @@ export function ResourceBar({ resources, starving, equippedTools }: Props) {
               <small>{alert ? `${label} – starving!` : label}</small>
               <strong>{value}</strong>
               {key === "tools" && <em>+ {equippedTools} equipped</em>}
+              {/* D7: how close the colony is to defending itself */}
+              {key === "weapons" && (
+                <em>
+                  {value >= RAID_DEFENSE_THRESHOLD
+                    ? "ready to defend"
+                    : `${RAID_DEFENSE_THRESHOLD} needed to defend`}
+                </em>
+              )}
             </div>
           </article>
         );

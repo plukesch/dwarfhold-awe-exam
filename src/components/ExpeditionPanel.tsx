@@ -4,6 +4,11 @@ import {
   destinations,
   expeditionProblem,
 } from "../game/expeditions";
+import {
+  canDefend,
+  RAID_DEFENSE_THRESHOLD,
+  WEAPONS_LOST_ON_DEFENSE,
+} from "../game/raid";
 import type { ColonyState, DestinationId, Dwarf } from "../types";
 
 interface Props {
@@ -67,6 +72,15 @@ export function ExpeditionPanel({ colony, onSend }: Props) {
         </select>
       </label>
       <p className="destination-note">{destinations[destination].description}</p>
+      {destinations[destination].hostile && (
+        // D7: show the outcome before the player decides
+        <p className={canDefend(colony.resources) ? "raid-forecast ready" : "raid-forecast"}>
+          🗡️ {colony.resources.weapons} / {RAID_DEFENSE_THRESHOLD} weapons –{" "}
+          {canDefend(colony.resources)
+            ? "Stonehome would drive them off."
+            : "Stonehome would be looted!"}
+        </p>
+      )}
 
       <button disabled={problem !== null} onClick={() => onSend(scoutId, destination)}>
         Send expedition
@@ -104,7 +118,11 @@ export function ExpeditionPanel({ colony, onSend }: Props) {
         ration. An equipped tool travels along (no bonus on the road). A failed
         route sends the dwarf home empty-handed. Pausing the hold does not stop
         a journey. Refreshing the page breaks off every journey: the dwarves
-        come home empty-handed.
+        come home empty-handed. After a successful return from HCW the
+        lecturers attack: with {RAID_DEFENSE_THRESHOLD} or more weapons in the
+        store Stonehome defends itself and {WEAPONS_LOST_ON_DEFENSE} weapon
+        breaks; otherwise they carry off half (rounded down) of the wood, stone
+        and food. A failed journey never leads them home.
       </p>
     </section>
   );

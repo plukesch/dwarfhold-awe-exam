@@ -4,7 +4,7 @@ export type JobType = "woodcutting" | "mining" | "farming" | null;
 export type DwarfStatus = "idle" | "working" | "expedition" | "crafting";
 export type RecipeId = "tool" | "weapon";
 // D4: all places a dwarf can travel to (details in game/expeditions.ts)
-export type DestinationId = "crystal-cave" | "old-mine" | "blocked-pass";
+export type DestinationId = "crystal-cave" | "old-mine" | "blocked-pass" | "hcw";
 
 // tools   = tools lying in the store (NOT equipped). Equipped tools are counted
 //           via Dwarf.hasTool -> total tools = resources.tools + equipped dwarves.
@@ -40,6 +40,8 @@ export interface ColonyState {
   // every expedition that has left and not yet returned (D4).
   // A list, because several dwarves may travel at the same time.
   expeditions: ActiveExpedition[];
+  // the most recent attack on Stonehome, or null if there was none yet (D7)
+  lastRaid: RaidReport | null;
 }
 
 // D4: one running expedition. The id is created by us when the dwarf departs
@@ -57,6 +59,14 @@ export interface ForgeTask {
   recipeId: RecipeId;
   dwarfId: string; // who is crafting
   completesOnDay: number; // the item is added when this day is reached
+}
+
+// D7: what happened when the lecturers attacked Stonehome.
+export interface RaidReport {
+  day: number;
+  defended: boolean; // true = enough weapons, nothing was looted
+  weaponsLost: number; // weapons that broke during the defense
+  loot: Partial<Resources>; // what the attackers carried off
 }
 
 export interface ExpeditionResult {

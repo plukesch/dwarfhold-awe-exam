@@ -1,4 +1,5 @@
 import { isAtHome } from "./dwarves";
+import { resolveRaid } from "./raid";
 import type {
   ColonyState,
   DestinationId,
@@ -13,6 +14,9 @@ export interface Destination {
   id: DestinationId;
   name: string;
   description: string;
+  // D7: true = after a successful return, enemies follow the traveller home
+  // and attack Stonehome. A failed journey never leads them here.
+  hostile?: boolean;
 }
 
 // All places beyond the gate. The rewards are decided by the server
@@ -32,6 +36,13 @@ export const destinations: Record<DestinationId, Destination> = {
     id: "blocked-pass",
     name: "Blocked Pass",
     description: "Rumoured to be sealed by rockfall.",
+  },
+  hcw: {
+    id: "hcw",
+    name: "HCW",
+    description:
+      "Well-stocked halls of learning – but the lecturers will follow you home and attack.",
+    hostile: true,
   },
 };
 
@@ -125,12 +136,21 @@ function endExpedition(
 }
 
 // Success: the rewards are booked and the dwarf is back.
+// D7: from a hostile destination (HCW) the lecturers follow the dwarf home and
+// attack right after the loot is stored. Only here – failExpedition never
+// leads to an attack. An unknown id (result arrived twice) changes nothing,
+// so there is also never a second attack.
 export function completeExpedition(
   state: ColonyState,
   expeditionId: string,
   rewards: Partial<Resources>,
 ): ColonyState {
-  return endExpedition(state, expeditionId, rewards);
+  const expedition = state.expeditions.find((item) => item.id === expeditionId);
+  if (!expedition) return state;
+
+  const home = endExpedition(state, expeditionId, rewards);
+  if (!destinations[expedition.destination].hostile) return home;
+  return resolveRaid(home);
 }
 
 // Failure: the dwarf comes back without loot – never stuck "away".

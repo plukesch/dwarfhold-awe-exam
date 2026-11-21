@@ -13,6 +13,7 @@ const colony = (overrides: Partial<ColonyState>): ColonyState => ({
   starving: false,
   forgeTask: null,
   expeditions: [],
+  lastRaid: null,
   ...overrides,
 });
 
