@@ -59,6 +59,14 @@ export interface ForgeTask {
   completesOnDay: number; // the item is added when this day is reached
 }
 
+// D7: what happened when the lecturers attacked Stonehome.
+export interface RaidReport {
+  day: number;
+  defended: boolean; // true = enough weapons, nothing was looted
+  weaponsLost: number; // weapons that broke during the defense
+  loot: Partial<Resources>; // what the attackers carried off
+}
+
 export interface ExpeditionResult {
   expeditionId: string;
   status: "completed";

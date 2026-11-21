@@ -37,9 +37,9 @@ So arbeiten wir größtenteils in verschiedenen Dateien.
 | Kaputter oder alter Spielstand? | Wird komplett ignoriert, es startet eine neue Kolonie. Kein "halb laden". | `parseSave` in `game/persistence.ts` |
 | Welches Ziel löst den Angriff aus? | **HCW** – bringt 6 Holz + 4 Nahrung, aber die **Lektoren** folgen dem Zwerg nach Hause. | `hostile: true` in `destinations` (`game/expeditions.ts`), `server/index.js` |
 | Wann greifen die Lektoren an? | Sofort bei der erfolgreichen Rückkehr, nachdem die Beute gebucht ist. Ein Fehlschlag (auch durch Refresh) löst nie einen Angriff aus. Auch während der Pause. | `completeExpedition` + `game/raid.ts` (D7 Schritt 2–3) |
-| Ab wann verteidigt sich Stonehome? | Ab **3 Waffen** im Lager. | `game/raid.ts` (D7 Schritt 2) |
-| Verbraucht die Verteidigung Waffen? | Ja, **1 Waffe bricht** pro abgewehrtem Angriff. | `game/raid.ts` (D7 Schritt 2) |
-| Was wird geplündert? | Ohne Verteidigung nehmen die Lektoren **die Hälfte (abgerundet)** von Holz, Stein und Nahrung. Fest berechnet, nie negativ. | `game/raid.ts` (D7 Schritt 2) |
+| Ab wann verteidigt sich Stonehome? | Ab **3 Waffen** im Lager. | `RAID_DEFENSE_THRESHOLD` in `game/raid.ts` |
+| Verbraucht die Verteidigung Waffen? | Ja, **1 Waffe bricht** pro abgewehrtem Angriff. | `WEAPONS_LOST_ON_DEFENSE` in `game/raid.ts` |
+| Was wird geplündert? | Ohne Verteidigung nehmen die Lektoren **die Hälfte (abgerundet)** von Holz, Stein und Nahrung. Fest berechnet, nie negativ. Tools und Waffen nehmen sie nicht. | `raidLoot` in `game/raid.ts` |
 
 ## Log
 
@@ -655,3 +655,26 @@ Zwerg nach Hause und greifen an (ab Schritt 2/3).
 
 **Tests:** 2 neue in `expeditions.test.ts` (Abreise nach HCW, nur HCW ist
 `hostile`), 81 grün, Build grün. Server-Antwort per `curl` geprüft.
+
+### D7 – Schritt 2: Angriff als reine Funktionen (Omar)
+
+Neue Datei `src/game/raid.ts`, noch nicht ans Spiel angeschlossen (Schritt 3).
+
+- `RAID_DEFENSE_THRESHOLD = 3`, `WEAPONS_LOST_ON_DEFENSE = 1`,
+  `LOOTED_RESOURCES = wood, stone, food` – die Teamentscheidungen stehen als
+  Konstanten oben in der Datei, so findet man sie sofort und die UI kann
+  dieselben Zahlen anzeigen.
+- `canDefend(resources)`: genug Waffen im Lager?
+- `raidLoot(resources)`: die Hälfte, abgerundet. Abrunden heißt, es wird nie
+  mehr genommen als da ist → Ressourcen können nicht negativ werden.
+- `resolveRaid(state)` → `{ colony, report }`: entweder Verteidigung (eine Waffe
+  bricht, sonst nichts) oder Plünderung (Beute wird abgezogen). Der `report`
+  (`RaidReport` in `types.ts`: Tag, verteidigt ja/nein, verlorene Waffen, Beute)
+  ist das, was später im Banner und in der Chronicle angezeigt wird.
+- Kein Zufall: gleiche Kolonie → gleiches Ergebnis. Das verlangt D7
+  ("deterministic selection") und macht die Regel testbar.
+
+**Tests:** `game/raid.test.ts`, 7 Tests – genau an der Schwelle und eine Waffe
+darunter, Verteidigung kostet eine Waffe, Plünderung rechnet richtig ab, leeres
+Lager bleibt bei 0, deterministisch, die übergebene Kolonie wird nicht verändert.
+88 grün, Build grün.
