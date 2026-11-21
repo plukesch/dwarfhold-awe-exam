@@ -384,3 +384,36 @@ zweites Mal gebucht.
   Test-Dateien steht dieselbe Zeile im Basis-State, damit die Typen stimmen.
 
 Am Spielverhalten ändert sich in diesem Schritt noch nichts.
+
+### D4 – Schritt 2: Expeditionslogik als reine Funktionen (Omar)
+
+Die Regeln für Expeditionen stehen jetzt in einer eigenen Datei
+`src/game/expeditions.ts` – ohne React, ohne Zufall, genau wie Patricks
+`forge.ts`. Im Spiel ist das noch nicht eingebaut, das kommt in Schritt 3.
+
+**`game/expeditions.ts`:**
+- `destinations` – die Ziele als Daten (Name, kurze Beschreibung) für das UI.
+  Was man dort findet, entscheidet weiterhin der Server.
+- `canSendOnExpedition(dwarf)` – los darf nur, wer zu Hause ist (`isAtHome`).
+  Damit kann ein schmiedender Zwerg nicht mehr losgeschickt werden. Vorher wäre
+  sein Status von `crafting` auf `expedition` überschrieben worden, und
+  `finishForging` hätte ihn später auf `working` gesetzt, obwohl er unterwegs ist.
+- `expeditionProblem(state, dwarfId, destination)` – gibt den Grund als Text
+  zurück (kein Scout, Zwerg beschäftigt, Ziel unbekannt) oder `null`.
+- `departExpedition(state, id, dwarfId, destination)` – Status `expedition`,
+  Eintrag in `expeditions`. Job und Tool bleiben beim Zwerg. Ungültig →
+  unveränderter State, also kann derselbe Zwerg nicht zweimal losgehen.
+- `completeExpedition(state, id, rewards)` – Beute ins Lager, Zwerg zurück an
+  seinen Job (oder `idle`), Eintrag aus der Liste entfernt.
+- `failExpedition(state, id)` – genauso, nur ohne Beute. Der Zwerg bleibt also
+  nie mehr für immer "away".
+
+Beide Rückkehr-Funktionen laufen über `endExpedition`: Steht die `id` nicht
+(mehr) in der Liste, kommt der State unverändert zurück. Kommt eine Antwort
+doppelt oder kommt nach einem Fehlschlag noch ein Erfolg, wird nichts gebucht.
+Außerdem werden nur echte, positive Mengen bekannter Ressourcen gebucht – eine
+kaputte Server-Antwort kann das Lager also nicht negativ machen.
+
+**Tests:** `game/expeditions.test.ts` mit 13 Tests, u. a. "Belohnung genau
+einmal", "Fehlschlag bringt den Zwerg ohne Beute zurück", "schmiedender Zwerg
+darf nicht los" und "unterwegs keine Produktion, aber Essen".

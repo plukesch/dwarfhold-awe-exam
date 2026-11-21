@@ -86,6 +86,9 @@ Commands: `npm install`, `npm run dev` (web + api), `npm test`, `npm run build`
   id is still in the list, then removed (rewards exactly once). Team decisions:
   the tool stays with the travelling dwarf (`hasTool` unchanged); pause does not
   stop an expedition (real-time request). `expeditions` must be persisted (D5).
+  Logic in `src/game/expeditions.ts`: `destinations`, `canSendOnExpedition`,
+  `expeditionProblem`, `departExpedition`, `completeExpedition`,
+  `failExpedition` (not yet wired into the provider).
 - Provider helper `log(message, tone)` adds a chronicle entry – use it instead of
   writing `setActivities(...)` by hand.
 
