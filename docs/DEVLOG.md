@@ -610,3 +610,23 @@ neue Kolonie mit Warnung, keine Fehler in der Konsole.
 
 **Bekannte Grenze:** In zwei Tabs gleichzeitig gewinnt der letzte Speichervorgang.
 Nicht verlangt, deshalb bewusst nicht gelöst.
+
+### D5 – Schritt 5–6: Regeln in der UI und Abschluss (Omar)
+
+Jede Teamentscheidung aus D5 steht jetzt auch im Spiel:
+- **Expeditions-Panel:** Regeltext ergänzt – ein Refresh bricht alle Reisen ab,
+  die Zwerge kommen ohne Beute zurück.
+- **Forge-Seite** (`ForgePage.tsx`, Patricks Datei – nur eine Zeile, im PR
+  erwähnt): ein laufender Auftrag übersteht einen Refresh und wird an seinem
+  Tag fertig.
+- **Footer** (`Layout.tsx`): "💾 Saved automatically", Tooltip erklärt, dass im
+  Browser gespeichert wird und ein unlesbarer Spielstand neu startet.
+
+Die übrigen Entscheidungen sieht man in der Chronicle beim Start ("Stonehome
+restored …", "… returns empty-handed", "The old records were unreadable …").
+
+**Geprüft:** 79 Tests und Build grün; die Texte im Browser sichtbar, Footer
+bleibt einzeilig. Die Refresh-Fälle wurden schon in Schritt 4 im Browser getestet.
+
+**Für D6:** Sobald die neue Spezies `ColonyState` oder `Dwarf` ändert, muss
+`SAVE_VERSION` erhöht und `isDwarf`/`isColony` in `persistence.ts` angepasst werden.

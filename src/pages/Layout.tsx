@@ -68,6 +68,9 @@ export function Layout() {
           {colony.forgeTask ? "🔥 Forge: in use" : "🔥 Forge: free"}
         </span>
         <span>Next deep day in ~8 seconds</span>
+        <span title="Saved in this browser after every change. An unreadable save starts a new colony.">
+          💾 Saved automatically
+        </span>
         <span>{paused ? "The hold is resting" : "⚙ Simulation active"}</span>
       </footer>
     </main>
