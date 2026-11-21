@@ -59,3 +59,14 @@
 .on-the-road li strong{font:700 13px Almendra;color:#d9a34f}
 .on-the-road li span{font:11px Barlow Condensed;color:#a8977c}
 .expedition .rule-note{padding:6px 13px 0;font:11px Barlow Condensed;line-height:1.4}
+
+/* D7 raids: banner after an attack, forecast in the expedition panel */
+.raid-banner{display:flex;gap:14px;align-items:center;margin:0 0 16px;padding:12px 18px;background:#3a1712;border:1px solid #b5503c}
+.raid-banner.defended{background:#1d2a17;border-color:#6f9a4f}
+.raid-banner>b{font-size:30px}
+.raid-banner strong{font:700 18px Almendra;color:#f09a7f}
+.raid-banner.defended strong{color:#a9d37f}
+.raid-banner p{margin:3px 0 0;font-size:13px;color:#e6c3b5}
+.raid-banner.defended p{color:#d3e4c2}
+.expedition .raid-forecast{margin:-2px 13px 6px;font:700 11px Barlow Condensed;color:#d87f63}
+.expedition .raid-forecast.ready{color:#9ac16f}

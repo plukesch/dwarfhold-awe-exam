@@ -719,3 +719,48 @@ Version-1-Spielstand, abgebrochene HCW-Reise ohne Angriff). 96 grün, Build grü
 **Browser-Test:** Version-1-Spielstand in `localStorage` → "The old records were
 unreadable", neue Kolonie. HCW mit 0 Waffen → Holz 23 → 12, Stein 11 → 6
 (Hälfte weg), `lastRaid` steht im Spielstand. Noch keine Anzeige – kommt in Schritt 5.
+
+### D7 – Schritt 5: Angriff und Regeln sichtbar (Omar)
+
+D7 verlangt, dass Ergebnis und Wirkung **klar sichtbar** sind und die
+Waffen-Regel kommuniziert wird. Alle Zahlen kommen aus den Konstanten in
+`game/raid.ts` – ändert sich eine Regel, ändert sich auch der Text.
+
+- **Vor der Entscheidung** (`ExpeditionPanel.tsx`): ist HCW gewählt, zeigt das
+  Panel "🗡️ 2 / 3 weapons – Stonehome would be looted!" bzw. "…would drive them
+  off". Der Regeltext unten erklärt Schwelle, gebrochene Waffe, Plünderung und
+  dass ein Fehlschlag nie einen Angriff auslöst.
+- **Im Lager** (`ResourceBar.tsx`): Waffen-Kachel zeigt "3 needed to defend"
+  oder "ready to defend".
+- **Nach dem Angriff:**
+  - `components/RaidBanner.tsx` (neu): rotes Banner bei Plünderung, grünes bei
+    Verteidigung, mit Tag und genauer Beute. Bleibt 3 Spieltage stehen, damit
+    man es auch auf der Forge-Seite sieht. Eingebunden in `Layout.tsx`.
+  - Chronicle: `useEffect` auf `colony.lastRaid` im Provider (gleiches Muster
+    wie "forge finished"). Der Ref startet mit dem geladenen Wert → nach einem
+    Refresh wird ein alter Angriff nicht noch einmal gemeldet.
+  - `describeRaid(report)` in `raid.ts` baut den Satz für Banner und Chronicle
+    ("…carried off 15 wood, 7 stone and 2 food", Nullen weggelassen). Reine
+    Funktion, 3 Tests.
+
+`ResourceBar.tsx` und `Layout.tsx` sind gemeinsame Dateien – je nur eine
+kleine Ergänzung, im PR erwähnen.
+
+### D7 – Schritt 6: Browser-Test und Fazit (Omar)
+
+Durchgespielt im Browser:
+1. **Plünderung:** 0 Waffen, Vorschau "0 / 3 – would be looted!". Nach der
+   Rückkehr: rotes Banner + Chronicle "carried off 15 wood, 7 stone and 2 food".
+   Die Nahrung war danach leer → am nächsten Tag Hunger (D1). Die Folge des
+   Angriffs wirkt also auch auf die Simulation.
+2. **Fehlschlag:** Request scheitert ("gate stayed shut") → `lastRaid` und
+   Ressourcen unverändert, kein Angriff.
+3. **Verteidigung:** 3 Waffen, Vorschau "3 / 3 – would drive them off". Nach der
+   Rückkehr: grünes Banner, Waffen 3 → 2, nichts geplündert.
+4. **Refresh:** Banner bleibt (gespeichert), Chronicle meldet den Angriff
+   nicht doppelt. Keine Fehler in der Konsole.
+
+**Fazit D7:** Die ganze Regel steckt in zwei reinen Funktionen
+(`completeExpedition` ruft `resolveRaid`), der Provider meldet nur. Dass ein
+Fehlschlag nie angreift, folgt aus dem Aufbau aus D4 und braucht keinen
+Extra-Code. 99 Tests, Build grün.

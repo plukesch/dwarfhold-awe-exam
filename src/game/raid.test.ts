@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { ColonyState, Resources } from "../types";
 import {
   canDefend,
+  describeRaid,
   RAID_DEFENSE_THRESHOLD,
   raidLoot,
   resolveRaid,
@@ -62,5 +63,28 @@ describe("a raid without defense (D7)", () => {
     const before = colony();
     resolveRaid(before);
     expect(before.resources).toEqual(colony().resources);
+  });
+});
+
+describe("describing a raid for the player (D7)", () => {
+  const report = (loot: Record<string, number>, defended = false) => ({
+    day: 20, defended, weaponsLost: defended ? 1 : 0, loot,
+  });
+
+  it("names the defense and the broken weapon", () => {
+    expect(describeRaid(report({}, true))).toBe(
+      "Stonehome drove the lecturers off – 1 weapon broke in the fight.",
+    );
+  });
+
+  it("lists what was taken and leaves out zeros", () => {
+    expect(describeRaid(report({ wood: 5, stone: 0, food: 2 }))).toBe(
+      "Too few weapons to defend – the lecturers carried off 5 wood and 2 food.",
+    );
+    expect(describeRaid(report({ wood: 5, stone: 3, food: 2 }))).toContain("5 wood, 3 stone and 2 food");
+  });
+
+  it("says so when there was nothing to take", () => {
+    expect(describeRaid(report({ wood: 0, stone: 0, food: 0 }))).toContain("nothing was taken");
   });
 });

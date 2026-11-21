@@ -1,4 +1,4 @@
-import type { ColonyState, ResourceKey, Resources } from "../types";
+import type { ColonyState, RaidReport, ResourceKey, Resources } from "../types";
 
 // D7: After a successful return from a hostile destination (HCW), the
 // lecturers follow the traveller home and attack Stonehome.
@@ -59,4 +59,22 @@ export function resolveRaid(state: ColonyState): ColonyState {
     resources,
     lastRaid: { day: state.day, defended: false, weaponsLost: 0, loot },
   };
+}
+
+// D7: one sentence for the chronicle and the banner, e.g.
+// "they carried off 5 wood, 3 stone and 2 food". Amounts of 0 are left out.
+export function describeRaid(report: RaidReport): string {
+  if (report.defended) {
+    const weapons = report.weaponsLost === 1 ? "weapon" : "weapons";
+    return `Stonehome drove the lecturers off – ${report.weaponsLost} ${weapons} broke in the fight.`;
+  }
+  const taken = LOOTED_RESOURCES.filter((key) => (report.loot[key] ?? 0) > 0).map(
+    (key) => `${report.loot[key]} ${key}`,
+  );
+  if (taken.length === 0) {
+    return "Too few weapons to defend – but the store was empty, nothing was taken.";
+  }
+  const list =
+    taken.length === 1 ? taken[0] : `${taken.slice(0, -1).join(", ")} and ${taken.at(-1)}`;
+  return `Too few weapons to defend – the lecturers carried off ${list}.`;
 }
