@@ -77,10 +77,7 @@ Commands: `npm install`, `npm run dev` (web + api), `npm test`, `npm run build`
   `advanceDay` calls `finishForging` for the new day (item into store, smith back
   to job, `forgeTask = null`). Chronicle entry comes from a `useEffect` in the
   provider. **For D5 (Omar):** decide what happens to a restored `forgeTask`.
-- **For D4 (Omar):** only dwarves with `isAtHome(dwarf)` may be sent on an
-  expedition – a `crafting` dwarf must not leave (currently not checked in
-  `sendExpedition`).
-- D4 (in progress): `ColonyState.expeditions: ActiveExpedition[]` (`{ id,
+- D4 (done, branch `D4`): `ColonyState.expeditions: ActiveExpedition[]` (`{ id,
   dwarfId, destination, departedOnDay }`) – several dwarves may travel at once.
   The id is created client-side on departure; a result is applied only while its
   id is still in the list, then removed (rewards exactly once). Team decisions:
@@ -88,9 +85,18 @@ Commands: `npm install`, `npm run dev` (web + api), `npm test`, `npm run build`
   stop an expedition (real-time request). `expeditions` must be persisted (D5).
   Logic in `src/game/expeditions.ts`: `destinations`, `canSendOnExpedition`,
   `expeditionProblem`, `departExpedition`, `completeExpedition`,
-  `failExpedition` (not yet wired into the provider).
+  `failExpedition`. Provider `sendExpedition(dwarfId, destination)` uses them
+  (`expeditionPending` is gone; "busy" = `expeditionProblem(...) !== null`).
+  A `departing` ref blocks a second click before React re-renders.
+  `src/api.ts`: `beginExpedition` always throws a readable `Error` (no connection,
+  timeout after `EXPEDITION_TIMEOUT_MS` = 8 s, error status, non-JSON body, wrong
+  shape via `isExpeditionResult`) -> the provider calls `failExpedition`.
+  UI: `src/components/ExpeditionPanel.tsx` (own file, so it does not collide with
+  Patrick's Shift Ledger in `ColonyPage.tsx`) – busy dwarves greyed out with a
+  reason, button disabled via `expeditionProblem`, "On the road" list, rule text.
 - Provider helper `log(message, tone)` adds a chronicle entry – use it instead of
-  writing `setActivities(...)` by hand.
+  writing `setActivities(...)` by hand. It takes the day from the `today` ref
+  (always the current day, also after an `await`).
 
 ## Starter bugs we found (baseline)
 
@@ -98,6 +104,7 @@ Commands: `npm install`, `npm run dev` (web + api), `npm test`, `npm run build`
 - `craftTool` only checks wood → stone can go negative; uses stale `colony`.
 - A failed expedition never resets the dwarf status (dwarf stuck "expedition").
 - The same dwarf can be sent twice; expedition state is a single global boolean.
+  (All four fixed: D1 / D2 / D4.)
 
 ## Documentation
 
