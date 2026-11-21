@@ -13,6 +13,7 @@ const colony = (tools: number, dwarves: Dwarf[]): ColonyState => ({
   dwarves,
   starving: false,
   forgeTask: null,
+  expeditions: [],
 });
 
 // total tools = store + equipped -> must never change by equipping/returning

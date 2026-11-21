@@ -26,6 +26,9 @@ So arbeiten wir größtenteils in verschiedenen Dateien.
 | Wie viele Aufträge gleichzeitig? | Nur einer – Stonehome hat genau eine Schmiede. | `forgeTask` in `types.ts` |
 | Wann wird das Material abgezogen? | Beim Start. Der Zwerg holt sich die Materialien aus dem Lager und geht damit zur Schmiede. | `startForging` in `game/forge.ts` |
 | Wer darf schmieden? | Jeder Zwerg, der zu Hause ist (`idle` oder `working`). Wer unterwegs ist oder schon schmiedet, nicht. | `canForge` in `game/forge.ts` |
+| Tool auf Expedition? | Das Tool bleibt beim Zwerg und reist mit. Unterwegs bringt es keinen Bonus (er ist nicht `working`), nach der Rückkehr wirkt es sofort wieder. | `hasTool` bleibt unverändert (D4) |
+| Mehrere Expeditionen gleichzeitig? | Ja – jeder Zwerg, der zu Hause ist, kann los. Ein Zwerg kann aber nur auf einer Expedition sein. | `ColonyState.expeditions` (Liste) |
+| Pause und Expedition? | Eine Expedition ist ein Request in Echtzeit und läuft auch bei pausierter Kolonie weiter. | `sendExpedition` im Provider |
 
 ## Log
 
@@ -353,3 +356,31 @@ wurde also mitgestreckt. Mit `align-items: start` behält jedes Panel seine eige
 Höhe. Außerdem hat die Status-Spalte im Roster jetzt eine feste Breite, damit das
 Dropdown nicht springt, wenn der Status zwischen IDLE, WORKING und CRAFTING
 wechselt.
+
+### D4 – Schritt 1: Datenmodell für laufende Expeditionen (Omar)
+
+**Problem:** Im Starter gab es für Expeditionen nur ein globales
+`expeditionPending`. Der State wusste nicht, *welcher* Zwerg *wohin* unterwegs
+ist. Deshalb konnte man nicht sicher sagen, ob eine Antwort vom Server noch
+gültig ist – eine doppelte oder verspätete Antwort hätte die Belohnung ein
+zweites Mal gebucht.
+
+**Entscheidungen** (siehe Tabelle oben):
+- Das Tool bleibt beim Zwerg und reist mit. Das passt zu D2: Tools werden nur zu
+  Hause getauscht (`canReturnTool` prüft `isAtHome`), und unterwegs gibt es
+  ohnehin keinen Bonus, weil der Zwerg nicht `working` ist.
+- Mehrere Zwerge dürfen gleichzeitig unterwegs sein.
+- Pause hält eine Expedition nicht an, weil sie ein Request in Echtzeit ist.
+
+**Code:**
+- `types.ts`: `DestinationId` für die Ziele, `ActiveExpedition` (`id`,
+  `dwarfId`, `destination`, `departedOnDay`) und im `ColonyState` die Liste
+  `expeditions`. Die `id` erzeugen wir selbst beim Aufbruch. Später wird ein
+  Ergebnis nur gebucht, solange diese `id` noch in der Liste steht – danach wird
+  sie entfernt. So kann eine Belohnung nicht zweimal gutgeschrieben werden.
+- Eine Liste statt einem Feld wie `forgeTask`, weil es nur eine Schmiede gibt,
+  aber mehrere Expeditionen gleichzeitig laufen können.
+- `ColonyProvider.tsx`: Startzustand mit `expeditions: []`. In Patricks drei
+  Test-Dateien steht dieselbe Zeile im Basis-State, damit die Typen stimmen.
+
+Am Spielverhalten ändert sich in diesem Schritt noch nichts.

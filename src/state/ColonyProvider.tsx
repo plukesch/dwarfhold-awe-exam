@@ -64,6 +64,7 @@ const initialState: ColonyState = {
   ],
   starving: false,
   forgeTask: null,
+  expeditions: [],
 };
 
 export function ColonyProvider({ children }: { children: ReactNode }) {

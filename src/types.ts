@@ -3,6 +3,8 @@ export type JobType = "woodcutting" | "mining" | "farming" | null;
 // crafting = busy at the forge (D3) – produces nothing, cannot change job
 export type DwarfStatus = "idle" | "working" | "expedition" | "crafting";
 export type RecipeId = "tool" | "weapon";
+// D4: all places a dwarf can travel to (details in game/expeditions.ts)
+export type DestinationId = "crystal-cave" | "old-mine" | "blocked-pass";
 
 // tools   = tools lying in the store (NOT equipped). Equipped tools are counted
 //           via Dwarf.hasTool -> total tools = resources.tools + equipped dwarves.
@@ -35,6 +37,19 @@ export interface ColonyState {
   starving: boolean;
   // the one running forge order, or null if the forge is free (D3)
   forgeTask: ForgeTask | null;
+  // every expedition that has left and not yet returned (D4).
+  // A list, because several dwarves may travel at the same time.
+  expeditions: ActiveExpedition[];
+}
+
+// D4: one running expedition. The id is created by us when the dwarf departs
+// (not by the server). A result is only applied while its id is still in
+// ColonyState.expeditions -> rewards can never be booked twice.
+export interface ActiveExpedition {
+  id: string;
+  dwarfId: string;
+  destination: DestinationId;
+  departedOnDay: number;
 }
 
 // D3: Stonehome has exactly one forge -> at most one order at a time.

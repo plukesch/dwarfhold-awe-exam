@@ -80,6 +80,12 @@ Commands: `npm install`, `npm run dev` (web + api), `npm test`, `npm run build`
 - **For D4 (Omar):** only dwarves with `isAtHome(dwarf)` may be sent on an
   expedition – a `crafting` dwarf must not leave (currently not checked in
   `sendExpedition`).
+- D4 (in progress): `ColonyState.expeditions: ActiveExpedition[]` (`{ id,
+  dwarfId, destination, departedOnDay }`) – several dwarves may travel at once.
+  The id is created client-side on departure; a result is applied only while its
+  id is still in the list, then removed (rewards exactly once). Team decisions:
+  the tool stays with the travelling dwarf (`hasTool` unchanged); pause does not
+  stop an expedition (real-time request). `expeditions` must be persisted (D5).
 - Provider helper `log(message, tone)` adds a chronicle entry – use it instead of
   writing `setActivities(...)` by hand.
 
