@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { beginExpedition } from "../api";
 import {
+  completeExpedition,
+  departExpedition,
+  destinations,
+  expeditionProblem,
+  failExpedition,
+} from "../game/expeditions";
+import {
   forgeProblem,
   recipes,
   startForging,
@@ -19,7 +26,7 @@ import {
   isToolCompatible,
   jobLabel,
 } from "../simulation";
-import type { Activity, ColonyState, JobType, ResourceKey } from "../types";
+import type { Activity, ColonyState, DestinationId, JobType } from "../types";
 import { ColonyContext, type ColonyContextValue } from "./ColonyContext";
 
 const initialState: ColonyState = {
@@ -70,7 +77,6 @@ const initialState: ColonyState = {
 export function ColonyProvider({ children }: { children: ReactNode }) {
   const [colony, setColony] = useState(initialState);
   const [paused, setPaused] = useState(false);
-  const [expeditionPending, setExpeditionPending] = useState(false);
   const [activities, setActivities] = useState<Activity[]>([
     {
       id: "welcome",
@@ -78,6 +84,15 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
       message: "The forge fires are lit. Stonehome wakes.",
     },
   ]);
+
+  // The current day for chronicle entries, also for code that runs later
+  // (e.g. after an expedition request): `colony.day` from the render that
+  // started the request would be out of date by then. This effect stays
+  // first, so the other effects below already log with the new day.
+  const today = useRef(colony.day);
+  useEffect(() => {
+    today.current = colony.day;
+  }, [colony.day]);
 
   useEffect(() => {
     if (paused) return;
@@ -132,7 +147,7 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
   function log(message: string, tone?: Activity["tone"]) {
     setActivities((current) =>
       [
-        { id: crypto.randomUUID(), day: colony.day, message, tone },
+        { id: crypto.randomUUID(), day: today.current, message, tone },
         ...current,
       ].slice(0, 6),
     );
@@ -206,83 +221,54 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  async function sendExpedition(dwarfId: string, destination: string) {
-    const dwarf = colony.dwarves.find((item) => item.id === dwarfId);
-    if (!dwarf) return;
+  // D4: Dwarves whose request is on its way right now. A ref (not state),
+  // because it changes immediately: even two clicks before React re-renders
+  // cannot send the same dwarf twice or write "departed" twice.
+  const departing = useRef(new Set<string>());
 
-    setExpeditionPending(true);
-    setColony((current) => ({
-      ...current,
-      dwarves: current.dwarves.map((item) =>
-        item.id === dwarf.id ? { ...item, status: "expedition" } : item,
-      ),
-    }));
-    setActivities((current) => [
-      {
-        id: crypto.randomUUID(),
-        day: colony.day,
-        message: `${dwarf.name} departed for ${destination.replace("-", " ")}.`,
-      },
-      ...current,
-    ]);
+  async function sendExpedition(dwarfId: string, destination: DestinationId) {
+    const problem = expeditionProblem(colony, dwarfId, destination);
+    if (problem) {
+      log(problem, "warning");
+      return;
+    }
+    if (departing.current.has(dwarfId)) return;
+
+    const dwarf = colony.dwarves.find((item) => item.id === dwarfId);
+    const name = dwarf?.name ?? "The scout";
+    const place = destinations[destination].name;
+
+    // Our own id for this journey. The result is only booked while this id
+    // is still in colony.expeditions -> rewards exactly once.
+    const expeditionId = crypto.randomUUID();
+
+    departing.current.add(dwarfId);
+    setColony((current) =>
+      departExpedition(current, expeditionId, dwarfId, destination),
+    );
+    log(`${name} departed for ${place}.`);
 
     try {
-      const result = await beginExpedition(dwarf.id, destination);
-
-      setColony((current) => ({
-        ...current,
-        resources: Object.entries(result.rewards).reduce(
-          (all, [key, amount]) => ({
-            ...all,
-            [key]: all[key as ResourceKey] + (amount ?? 0),
-          }),
-          current.resources,
-        ),
-        dwarves: current.dwarves.map((item) =>
-          item.id === dwarf.id
-            ? {
-                ...item,
-                status: item.assignment ? "working" : "idle",
-              }
-            : item,
-        ),
-      }));
-      setActivities((current) =>
-        [
-          {
-            id: result.expeditionId,
-            day: colony.day,
-            message: result.message,
-            tone: "good" as const,
-          },
-          ...current,
-        ].slice(0, 6),
+      const result = await beginExpedition(dwarfId, destination);
+      setColony((current) =>
+        completeExpedition(current, expeditionId, result.rewards),
       );
+      log(`${name} is back from ${place}: ${result.message}`, "good");
     } catch (error) {
-      setActivities((current) =>
-        [
-          {
-            id: crypto.randomUUID(),
-            day: colony.day,
-            message:
-              error instanceof Error
-                ? error.message
-                : "The expedition was lost from view.",
-            tone: "warning" as const,
-          },
-          ...current,
-        ].slice(0, 6),
-      );
+      // Failure: no loot, but the dwarf always comes home (never stuck "away").
+      setColony((current) => failExpedition(current, expeditionId));
+      const reason =
+        error instanceof Error ? error.message : "The route was lost from view.";
+      log(`${name} returns empty-handed from ${place}. ${reason}`, "warning");
+    } finally {
+      departing.current.delete(dwarfId);
     }
-
-    setExpeditionPending(false);
   }
 
   const value: ColonyContextValue = {
     colony,
     paused,
     activities,
-    expeditionPending,
     togglePaused: () => setPaused((value) => !value),
     assignDwarf,
     equipToolTo,
