@@ -81,6 +81,10 @@ export function ForgePage() {
               </label>
             </>
           )}
+          <p className="rule-note">
+            The hold keeps its records: a running order survives a page refresh
+            and is finished on its day.
+          </p>
         </section>
 
         {Object.values(recipes).map((recipe) => {

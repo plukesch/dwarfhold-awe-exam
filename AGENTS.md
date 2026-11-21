@@ -94,6 +94,20 @@ Commands: `npm install`, `npm run dev` (web + api), `npm test`, `npm run build`
   UI: `src/components/ExpeditionPanel.tsx` (own file, so it does not collide with
   Patrick's Shift Ledger in `ColonyPage.tsx`) – busy dwarves greyed out with a
   reason, button disabled via `expeditionProblem`, "On the road" list, rule text.
+- D5 (done, branch `D5`): pure logic in `src/game/persistence.ts`:
+  `SAVE_KEY`, `SAVE_VERSION` (= 1, raise it whenever `ColonyState` changes, e.g.
+  D6), `serializeSave`, `parseSave(raw)` -> `ColonyState | null` (null for every
+  problem: not JSON, other version, wrong/missing fields, negative or broken
+  numbers, contradicting data). `resumeAfterRefresh(colony)` applies the refresh
+  policy: interrupted expeditions -> `failExpedition` (home without loot),
+  `forgeTask` is kept and continues. Wired into the provider (step 4):
+  `loadGame()` runs once via `useState(loadGame)` (nothing saved -> new colony,
+  unreadable -> new colony + warning, valid -> `resumeAfterRefresh` + chronicle
+  entries); a `useEffect` on `colony` saves after every change. `readSave` /
+  `writeSave` wrap `localStorage` in try/catch. UI: refresh rule in the
+  expedition panel, forge note on `ForgePage` (Patrick's file), footer
+  "💾 Saved automatically" in `Layout.tsx`.
+  Team decisions: chronicle and pause are not saved; no "New game" button.
 - Provider helper `log(message, tone)` adds a chronicle entry – use it instead of
   writing `setActivities(...)` by hand. It takes the day from the `today` ref
   (always the current day, also after an `await`).

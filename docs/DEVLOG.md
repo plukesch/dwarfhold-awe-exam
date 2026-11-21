@@ -31,6 +31,10 @@ So arbeiten wir größtenteils in verschiedenen Dateien.
 | Pause und Expedition? | Eine Expedition ist ein Request in Echtzeit und läuft auch bei pausierter Kolonie weiter. | `sendExpedition` im Provider |
 | Was passiert bei einem Fehlschlag? | Der Zwerg kommt sofort ohne Beute zurück und arbeitet in seinem alten Job weiter. Das gilt für jeden Fehler: gesperrte Route, Server nicht erreichbar, unlesbare Antwort, Timeout. | `failExpedition`, `api.ts` |
 | Wie lange warten wir auf die Antwort? | Höchstens 8 Sekunden (der Server braucht maximal 5). Danach gilt die Expedition als gescheitert. | `EXPEDITION_TIMEOUT_MS` in `api.ts` |
+| Expedition und Refresh? | Nach einem Refresh ist der Request weg. Alle Reisenden kommen **ohne Beute** zurück – wie bei jedem anderen Fehlschlag. So bringt Refreshen nie zusätzliche Beute. | `resumeAfterRefresh` in `game/persistence.ts` |
+| Schmiede und Refresh? | Der Auftrag läuft einfach weiter, weil er an Spieltagen hängt und nicht an einem Request. Das Material ist schon bezahlt. | `resumeAfterRefresh` (lässt `forgeTask` unverändert) |
+| Was wird gespeichert? | Der ganze `ColonyState` mit Versionsnummer. Chronicle und Pause nicht – die Chronicle ist nur ein Log, und nach dem Laden läuft das Spiel wieder. | `serializeSave` in `game/persistence.ts` |
+| Kaputter oder alter Spielstand? | Wird komplett ignoriert, es startet eine neue Kolonie. Kein "halb laden". | `parseSave` in `game/persistence.ts` |
 
 ## Log
 
@@ -522,3 +526,107 @@ laufenden Requests nicht mehr – dafür brauchen wir eine Regel (Vorschlag: all
 Reisenden kommen ohne Beute zurück, über `failExpedition`).
 **Für D7/D6:** Überfall und neue Spezies hängen sich an den Erfolgsfall
 (`completeExpedition`), damit ein Fehlschlag sie nie auslöst.
+
+### D5 – Schritt 1–3: Speichern, Prüfen und Refresh-Regel als reine Funktionen (Omar)
+
+D5 verlangt drei Dinge: Der Spielstand übersteht einen Refresh, kaputte oder
+alte Daten fallen sicher zurück, und es gibt eine sichtbare Regel für
+Expeditionen und Schmiede-Aufträge, die ein Refresh unterbricht.
+
+Wie bei D4 steht zuerst die Logik in einer eigenen Datei
+`src/game/persistence.ts` – ohne `localStorage` und ohne React. Die Funktionen
+bekommen Text rein und geben Text bzw. State raus, dadurch kann man sie ohne
+Browser testen. Eingebaut wird das im nächsten Schritt.
+
+**Speichern:** `serializeSave(colony)` schreibt `{ version, colony }` als JSON.
+`SAVE_VERSION` ist 1. Ändert sich später die Form von `ColonyState` (z. B. mit
+der neuen Spezies in D6), erhöhen wir die Zahl – ein alter Spielstand passt dann
+nicht mehr und wird sicher ignoriert, statt halb geladen zu werden.
+
+**Laden:** `parseSave(raw)` gibt einen `ColonyState` zurück oder `null`. `null`
+heißt immer: neue Kolonie. Geprüft wird in zwei Stufen:
+1. **Form:** Ist es JSON? Stimmt die Version? Sind alle Felder da und haben den
+   richtigen Typ? Ressourcen und Tage müssen ganze Zahlen ≥ 0 sein. Status, Job,
+   Rezept und Ziel müssen bekannte Werte sein.
+2. **Widersprüche:** Die richtigen Typen reichen nicht. Ein Spielstand, in dem
+   ein Zwerg `expedition` hat, aber nicht in `expeditions` steht, würde den
+   Zwerg für immer festhalten – genau der Starter-Bug aus D4. Deshalb gelten
+   beim Laden dieselben Regeln wie im Spiel: Jeder reisende Zwerg hat genau
+   eine Expedition und umgekehrt, `crafting` gibt es genau dann, wenn ein
+   Schmiede-Auftrag läuft (und es ist dessen Schmied), keine doppelten Ids.
+
+Die Prüfung ist von Hand geschrieben und nicht mit einer Bibliothek wie zod.
+Das sind ein paar kleine Funktionen (`isDwarf`, `isForgeTask`, …), die man
+Zeile für Zeile erklären kann, und wir brauchen keine neue Abhängigkeit.
+
+**Refresh-Regel:** `resumeAfterRefresh(colony)` wird nach dem Laden aufgerufen.
+- Jede laufende Expedition geht über `failExpedition` aus D4: Der Zwerg kommt
+  ohne Beute zurück und arbeitet in seinem Job weiter, das Tool hat er dabei.
+  Der Request von vor dem Refresh ist weg, seine Antwort kann nie ankommen.
+  Den Request neu zu schicken haben wir verworfen – dann könnte man durch
+  Refreshen an Beute kommen, und es wäre deutlich mehr Code.
+- Ein Schmiede-Auftrag bleibt einfach stehen und wird an seinem Tag fertig.
+  Er hängt an `completesOnDay`, nicht an einem Request, es geht also nichts
+  verloren. Verloren gehen höchstens die Sekunden bis zum nächsten Tag.
+- Die Funktion gibt außerdem die Namen der Zurückgekehrten zurück, damit der
+  Provider sie in die Chronicle schreiben kann.
+
+**Nicht gespeichert:** die Chronicle (nur ein Log) und die Pause. Einen
+"New game"-Button gibt es nicht, weil D5 ihn nicht verlangt – zum Testen reicht
+`localStorage.clear()` in der Browser-Konsole.
+
+**Tests:** `game/persistence.test.ts` mit 12 Tests. Der Test-State ist eine
+Kolonie, in der gerade alles gleichzeitig passiert (ein Zwerg unterwegs mit
+Tool, einer in der Schmiede, einer zu Hause). Pro Test wird genau eine Sache
+kaputt gemacht: fehlendes Feld, negative Ressource, unbekannter Status,
+Widerspruch zwischen Status und Liste, andere Version, kein JSON. Dazu:
+Speichern und Laden ergibt denselben State, Reisende kommen ohne Beute zurück,
+ein Schmiede-Auftrag wird nach dem Laden normal fertig.
+
+### D5 – Schritt 4: Provider lädt beim Start und speichert jede Änderung (Omar)
+
+Nur `src/state/ColonyProvider.tsx` hat sich geändert, die Spielregeln nicht.
+
+- **Laden:** `loadGame()` liest den Spielstand und prüft ihn mit `parseSave`.
+  Es gibt drei Fälle: nichts gespeichert → neue Kolonie wie bisher; kaputt oder
+  alte Version → neue Kolonie plus Warnung in der Chronicle; gültig →
+  `resumeAfterRefresh`, Chronicle meldet "Stonehome restored on day X" und
+  welche Reisenden ohne Beute zurückkamen. Aufgerufen wird es mit
+  `useState(loadGame)` (die Funktion, nicht `loadGame()`), damit React es nur
+  beim ersten Render ausführt.
+- **Speichern:** ein `useEffect` auf `colony` schreibt nach jeder Änderung
+  (jeder Tag, jede Aktion). Eine einzige Stelle – eine neue Aktion kann das
+  Speichern also nicht vergessen.
+- **Robust:** `localStorage` kann werfen (gesperrt im Privatmodus, voll).
+  `readSave`/`writeSave` fangen das ab, das Spiel läuft dann ohne Speichern weiter.
+- Die Refs `today`, `wasStarving`, `previousTask` starten mit dem geladenen
+  State → nach einem Refresh erscheinen keine doppelten Hunger-Meldungen.
+
+**Browser-Test:** Refresh direkt nach "Send expedition" → Zwerg zu Hause, keine
+Beute (auch nicht, als die alte Server-Antwort fällig gewesen wäre), Chronicle-
+Eintrag da. Refresh während eines Waffen-Auftrags → wird am geplanten Tag fertig.
+Refresh beim Hungern → keine doppelte Meldung. `dwarfhold-save` = "kaputt" →
+neue Kolonie mit Warnung, keine Fehler in der Konsole.
+
+**Bekannte Grenze:** In zwei Tabs gleichzeitig gewinnt der letzte Speichervorgang.
+Nicht verlangt, deshalb bewusst nicht gelöst.
+
+### D5 – Schritt 5–6: Regeln in der UI und Abschluss (Omar)
+
+Jede Teamentscheidung aus D5 steht jetzt auch im Spiel:
+- **Expeditions-Panel:** Regeltext ergänzt – ein Refresh bricht alle Reisen ab,
+  die Zwerge kommen ohne Beute zurück.
+- **Forge-Seite** (`ForgePage.tsx`, Patricks Datei – nur eine Zeile, im PR
+  erwähnt): ein laufender Auftrag übersteht einen Refresh und wird an seinem
+  Tag fertig.
+- **Footer** (`Layout.tsx`): "💾 Saved automatically", Tooltip erklärt, dass im
+  Browser gespeichert wird und ein unlesbarer Spielstand neu startet.
+
+Die übrigen Entscheidungen sieht man in der Chronicle beim Start ("Stonehome
+restored …", "… returns empty-handed", "The old records were unreadable …").
+
+**Geprüft:** 79 Tests und Build grün; die Texte im Browser sichtbar, Footer
+bleibt einzeilig. Die Refresh-Fälle wurden schon in Schritt 4 im Browser getestet.
+
+**Für D6:** Sobald die neue Spezies `ColonyState` oder `Dwarf` ändert, muss
+`SAVE_VERSION` erhöht und `isDwarf`/`isColony` in `persistence.ts` angepasst werden.

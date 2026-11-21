@@ -103,7 +103,8 @@ export function ExpeditionPanel({ colony, onSend }: Props) {
         away, a dwarf does not work, forge or change jobs – but still eats a
         ration. An equipped tool travels along (no bonus on the road). A failed
         route sends the dwarf home empty-handed. Pausing the hold does not stop
-        a journey.
+        a journey. Refreshing the page breaks off every journey: the dwarves
+        come home empty-handed.
       </p>
     </section>
   );

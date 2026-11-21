@@ -14,6 +14,12 @@ import {
   type RecipeId,
 } from "../game/forge";
 import {
+  parseSave,
+  resumeAfterRefresh,
+  SAVE_KEY,
+  serializeSave,
+} from "../game/persistence";
+import {
   canEquipTool,
   canReturnTool,
   equipTool,
@@ -74,16 +80,76 @@ const initialState: ColonyState = {
   expeditions: [],
 };
 
+// D5: Browser storage can throw (blocked in some private modes, or full).
+// Then the game simply runs without saving instead of crashing.
+function readSave(): string | null {
+  try {
+    return localStorage.getItem(SAVE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function writeSave(text: string) {
+  try {
+    localStorage.setItem(SAVE_KEY, text);
+  } catch {
+    // Not saved this time – the game keeps running.
+  }
+}
+
+function entry(day: number, message: string, tone?: Activity["tone"]): Activity {
+  return { id: crypto.randomUUID(), day, message, tone };
+}
+
+// D5: Start state of the game – runs once when the page loads.
+// 1. nothing saved      -> new colony
+// 2. save is unreadable -> new colony + a warning in the chronicle
+// 3. valid save         -> continue it (refresh rule: see resumeAfterRefresh)
+function loadGame(): { colony: ColonyState; activities: Activity[] } {
+  const raw = readSave();
+  const saved = parseSave(raw);
+
+  if (saved === null) {
+    const message =
+      raw === null
+        ? "The forge fires are lit. Stonehome wakes."
+        : "The old records were unreadable – a new colony begins.";
+    return {
+      colony: initialState,
+      activities: [entry(initialState.day, message, raw === null ? undefined : "warning")],
+    };
+  }
+
+  const { colony, returnedHome } = resumeAfterRefresh(saved);
+  return {
+    colony,
+    activities: [
+      ...returnedHome.map((name) =>
+        entry(
+          colony.day,
+          `${name} lost the trail while the hold slept and returns empty-handed.`,
+          "warning",
+        ),
+      ),
+      entry(colony.day, `Stonehome restored on day ${colony.day}.`, "good"),
+    ],
+  };
+}
+
 export function ColonyProvider({ children }: { children: ReactNode }) {
-  const [colony, setColony] = useState(initialState);
+  // useState(loadGame) – the function itself, not loadGame(): React calls it
+  // only on the first render, so the save is read and checked once.
+  const [startup] = useState(loadGame);
+  const [colony, setColony] = useState(startup.colony);
   const [paused, setPaused] = useState(false);
-  const [activities, setActivities] = useState<Activity[]>([
-    {
-      id: "welcome",
-      day: 12,
-      message: "The forge fires are lit. Stonehome wakes.",
-    },
-  ]);
+  const [activities, setActivities] = useState<Activity[]>(startup.activities);
+
+  // D5: Save after every change (each day and each action). One place for
+  // everything, so a new action can never forget to save.
+  useEffect(() => {
+    writeSave(serializeSave(colony));
+  }, [colony]);
 
   // The current day for chronicle entries, also for code that runs later
   // (e.g. after an expedition request): `colony.day` from the render that
