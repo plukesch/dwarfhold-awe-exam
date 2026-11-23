@@ -8,6 +8,7 @@ import {
   failExpedition,
 } from "../game/expeditions";
 import {
+  forgeDays,
   forgeProblem,
   recipes,
   startForging,
@@ -303,7 +304,7 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     // start two orders or pay the materials twice.
     setColony((current) => startForging(current, recipeId, dwarfId));
     log(
-      `${dwarf?.name} starts forging a ${recipe.name.toLowerCase()} ${recipe.icon} – ready on day ${colony.day + recipe.days}.`,
+      `${dwarf?.name} starts forging a ${recipe.name.toLowerCase()} ${recipe.icon} – ready on day ${colony.day + (dwarf ? forgeDays(recipe, dwarf) : recipe.days)}.`,
     );
   }
 

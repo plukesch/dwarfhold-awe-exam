@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ColonyState, Dwarf, Resources } from "../types";
 import { advanceDay } from "../simulation";
-import { daysLeft, finishForging, forgeProblem, missingMaterials, recipes, startForging } from "./forge";
+import { canForgeRecipe, daysLeft, finishForging, forgeDays, forgeProblem, missingMaterials, recipes, startForging } from "./forge";
 
 const dwarf = (overrides: Partial<Dwarf>): Dwarf => ({
   id: "d1", name: "Brom", title: "", icon: "", species: "dwarf", assignment: "mining", status: "working", hasTool: false, ...overrides,
@@ -113,5 +113,35 @@ describe("forging over several days with advanceDay (D3)", () => {
     expect(state.dwarves[0].status).toBe("working");
     state = advanceDay(state); // day 13 -> mining again
     expect(state.resources.stone).toBe(5);
+  });
+});
+
+describe("Leon at the forge (D6)", () => {
+  const leon = dwarf({ id: "lecturer-1", name: "Leon", species: "lecturer" });
+  const rich = () => colony({ wood: 10, stone: 10 }, [dwarf({}), leon]);
+
+  it("cannot forge a tool – nothing is paid, nothing changes", () => {
+    const state = rich();
+    expect(forgeProblem(state, "tool", "lecturer-1")).toBe("Leon cannot forge a tool.");
+    expect(startForging(state, "tool", "lecturer-1")).toBe(state);
+  });
+
+  it("forges a weapon in 2 instead of 3 days", () => {
+    expect(forgeDays(recipes.weapon, leon)).toBe(2);
+    const next = startForging(rich(), "weapon", "lecturer-1");
+    expect(next.forgeTask).toEqual({ recipeId: "weapon", dwarfId: "lecturer-1", completesOnDay: 12 });
+    expect(next.resources).toMatchObject({ wood: 8, stone: 6 });
+  });
+
+  it("a dwarf still needs the normal days", () => {
+    expect(forgeDays(recipes.weapon, dwarf({}))).toBe(3);
+    expect(forgeDays(recipes.tool, dwarf({}))).toBe(2);
+    expect(canForgeRecipe(dwarf({}), "tool")).toBe(true);
+  });
+
+  it("his weapon is in the store after 2 days", () => {
+    const next = advanceDay(advanceDay(startForging(rich(), "weapon", "lecturer-1")));
+    expect(next.resources.weapons).toBe(1);
+    expect(next.forgeTask).toBeNull();
   });
 });

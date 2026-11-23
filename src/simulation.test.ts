@@ -177,3 +177,29 @@ describe("crafting status (D3 step 1)", () => {
     expect(advanceDay(colony({ dwarves: [smith] })).resources.food).toBe(9);
   });
 });
+
+describe("Leon produces differently (D6)", () => {
+  const leon = (overrides: Partial<Dwarf>) =>
+    dwarf({ id: "lecturer-1", species: "lecturer", status: "working", ...overrides });
+
+  it("4 stone in the mine, but only 1 wood and 2 food", () => {
+    expect(dailyProduction([leon({ assignment: "mining" })]).stone).toBe(4);
+    expect(dailyProduction([leon({ assignment: "woodcutting" })]).wood).toBe(1);
+    expect(dailyProduction([leon({ assignment: "farming" })]).food).toBe(2);
+  });
+
+  it("the same tool bonus applies to him", () => {
+    expect(dailyProduction([leon({ assignment: "mining", hasTool: true })]).stone).toBe(5);
+  });
+
+  it("the same hunger rule applies to him", () => {
+    expect(dailyProduction([leon({ assignment: "mining" })], true).stone).toBe(0);
+  });
+
+  it("dwarves keep their old numbers", () => {
+    expect(dailyProduction([
+      dwarf({ assignment: "woodcutting", status: "working" }),
+      leon({ assignment: "woodcutting" }),
+    ]).wood).toBe(4);
+  });
+});
