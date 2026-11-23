@@ -3,7 +3,7 @@ import { advanceDay, assignJob, dailyProduction } from "./simulation";
 import type { ColonyState, Dwarf } from "./types";
 
 const dwarf = (overrides: Partial<Dwarf>): Dwarf => ({
-  id: "d1", name: "Brom", title: "", icon: "", assignment: null, status: "idle", hasTool: false, ...overrides,
+  id: "d1", name: "Brom", title: "", icon: "", species: "dwarf", assignment: null, status: "idle", hasTool: false, ...overrides,
 });
 
 const colony = (overrides: Partial<ColonyState>): ColonyState => ({

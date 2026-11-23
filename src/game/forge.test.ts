@@ -4,7 +4,7 @@ import { advanceDay } from "../simulation";
 import { daysLeft, finishForging, forgeProblem, missingMaterials, recipes, startForging } from "./forge";
 
 const dwarf = (overrides: Partial<Dwarf>): Dwarf => ({
-  id: "d1", name: "Brom", title: "", icon: "", assignment: "mining", status: "working", hasTool: false, ...overrides,
+  id: "d1", name: "Brom", title: "", icon: "", species: "dwarf", assignment: "mining", status: "working", hasTool: false, ...overrides,
 });
 
 const colony = (resources: Partial<Resources>, dwarves: Dwarf[] = [dwarf({})]): ColonyState => ({

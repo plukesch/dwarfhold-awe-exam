@@ -11,7 +11,7 @@ import {
 } from "./expeditions";
 
 const dwarf = (overrides: Partial<Dwarf>): Dwarf => ({
-  id: "d1", name: "Brom", title: "", icon: "", assignment: "mining", status: "working", hasTool: false, ...overrides,
+  id: "d1", name: "Brom", title: "", icon: "", species: "dwarf", assignment: "mining", status: "working", hasTool: false, ...overrides,
 });
 
 const colony = (dwarves: Dwarf[] = [dwarf({})]): ColonyState => ({

@@ -9,7 +9,7 @@ import {
 } from "./persistence";
 
 const dwarf = (overrides: Partial<Dwarf>): Dwarf => ({
-  id: "d1", name: "Brom", title: "", icon: "", assignment: "mining", status: "working", hasTool: false, ...overrides,
+  id: "d1", name: "Brom", title: "", icon: "", species: "dwarf", assignment: "mining", status: "working", hasTool: false, ...overrides,
 });
 
 // A colony in the middle of everything: one dwarf travelling (with a tool),
