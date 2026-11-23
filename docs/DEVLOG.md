@@ -5,14 +5,19 @@ Laufende Notizen von Patrick & Omar – Grundlage fürs Exam-Diary.
 ## Aufteilung
 
 - **Patrick:** D1 (Arbeit & Essen), D2 (Tools & Waffen), D3 (Crafting dauert Zeit)
-- **Omar:** D4 (Expeditionen robust), D5 (Speichern/Laden), D7 (Angriff & Verteidigung),
-  D6 (neue Spezies)
-- D6 war ursprünglich gemeinsam geplant, Omar hat es allein umgesetzt. Dabei
-  wurden auch Patricks Dateien angepasst (siehe D6 – Schritt 4/5).
+- **Omar:** D4 (Expeditionen robust), D5 (Speichern/Laden), D7 (Angriff & Verteidigung)
+- **D6 (neue Spezies):** gemeinsam besprochen und entschieden, Omar hat es
+  umgesetzt und committet. Dabei wurden auch Patricks Dateien angepasst (siehe
+  D6 – Schritt 4/5).
 - Ein Branch pro Requirement, Merge in `main` per Pull Request.
 
 D1–D3 drehen sich um Simulation und Forge, D4/D5/D7 um Expeditionen und State.
 So arbeiten wir größtenteils in verschiedenen Dateien.
+
+**Zeitlicher Ablauf:** Patrick hatte am Freitag Zeit, Omar am Wochenende.
+Darum hat Patrick am Fr 20.11. D1–D3 fertig gemacht, Omar am Sa 21.11. D4, D5
+und D7 auf diesem Stand aufgebaut. D6 kam am Mo 23.11. dazu, danach haben wir
+alles gemeinsam durchgesprochen.
 
 ## Teamentscheidungen
 
@@ -231,8 +236,6 @@ im Roster, wer eines hat, und es bringt bei Holz und Stein +1 pro Tag. Das Lager
 bleibt dabei immer stimmig, weil ein Tool nur zwischen Lager und Zwerg verschoben
 wird. Die Forge hat jetzt zusätzlich ein Waffenrezept, und Schmieden mit zu wenig
 Material ändert nichts mehr.
-
-wird beim nächsten commit rausgenommen, nur drinnen damit push einheitlich wird weil ich vorher etwas verkackt habe 
 
 ### D3 – Schritt 1: Datenmodell für Schmiede-Aufträge (Patrick)
 
@@ -703,8 +706,8 @@ Lager bleibt bei 0, deterministisch, die übergebene Kolonie wird nicht verände
   - **Nur ein Angriff pro Reise:** unbekannte Id (Ergebnis kommt doppelt) →
     `completeExpedition` gibt den State unverändert zurück, vor dem Angriff.
 - `lastRaid: null` in allen Test-Kolonien ergänzt, auch in Patricks
-  `forge.test.ts`, `tools.test.ts`, `simulation.test.ts` (je eine Zeile, im PR
-  erwähnen), und im `initialState` des Providers.
+  `forge.test.ts`, `tools.test.ts`, `simulation.test.ts` (je eine Zeile) und im
+  `initialState` des Providers.
 
 **Tests:** 5 neue in `expeditions.test.ts` – mit 3 Waffen verteidigt, mit 2
 geplündert (inkl. frischer Beute), Fehlschlag ohne Angriff, doppeltes Ergebnis
@@ -751,7 +754,7 @@ Waffen-Regel kommuniziert wird. Alle Zahlen kommen aus den Konstanten in
     Funktion, 3 Tests.
 
 `ResourceBar.tsx` und `Layout.tsx` sind gemeinsame Dateien – je nur eine
-kleine Ergänzung, im PR erwähnen.
+kleine Ergänzung.
 
 ### D7 – Schritt 6: Browser-Test und Fazit (Omar)
 
@@ -772,7 +775,13 @@ Durchgespielt im Browser:
 Fehlschlag nie angreift, folgt aus dem Aufbau aus D4 und braucht keinen
 Extra-Code. 99 Tests, Build grün.
 
-### D6 – Schritt 1: Spezies als Grundlage (Omar) – `a388c36`
+### D6 – Vorbemerkung
+
+D6 kam zeitlich nach D7, weil es auf D4 (Rückkehr), D5 (Speichern) und D7
+(HCW als Herkunft der Lektoren) aufbaut. Spezies, Beitrittsziel und die Regeln
+für Leon haben wir gemeinsam festgelegt, Omar hat programmiert und committet.
+
+### D6 – Schritt 1: Spezies als Grundlage (Omar)
 
 - `types.ts`: `Species = "dwarf" | "lecturer"` und Pflichtfeld
   `Dwarf.species`. Der Typ heißt weiter `Dwarf` (wird überall benutzt), ein
@@ -786,7 +795,7 @@ Extra-Code. 99 Tests, Build grün.
 
 **Tests:** 99 grün, Build grün.
 
-### D6 – Schritt 2: Leon tritt per Expedition bei (Omar) – `f65f582`
+### D6 – Schritt 2: Leon tritt per Expedition bei (Omar)
 
 Neue Datei `src/game/newcomer.ts`:
 - `NEWCOMER_DESTINATION = "crystal-cave"`, `newcomer` = Leon mit fester id
@@ -804,7 +813,7 @@ Neue Datei `src/game/newcomer.ts`:
 Ergebnis, Fehlschlag, anderes Ziel, `welcomeNewcomer` unverändert, er isst ab
 dem nächsten Tag mit). 106 grün.
 
-### D6 – Schritt 3: Leon wird gespeichert (Omar) – `e238ae3`
+### D6 – Schritt 3: Leon wird gespeichert (Omar)
 
 Neues Pflichtfeld in jedem Bewohner → Form des Spielstands geändert →
 `SAVE_VERSION` von 2 auf **3**. Ein Spielstand von D7 wird abgelehnt (neue
@@ -819,7 +828,7 @@ Kolonie mit Hinweis).
 Spezies / zweiter Lecturer, Version-2-Save, abgebrochene Reise bringt ihn
 nicht). 110 grün.
 
-### D6 – Schritt 4: Eigene Produktion und Schmiede (Omar) – `614e953`
+### D6 – Schritt 4: Eigene Produktion und Schmiede (Omar)
 
 Neue Datei `src/game/species.ts`: Tabelle `speciesRules` mit allem, was sich
 zwischen den Spezies unterscheidet (`production`, `cannotForge`, `forgeDays`).
@@ -836,7 +845,7 @@ Was für alle gleich ist, steht bewusst nicht darin.
 
 **Tests:** 4 in `simulation.test.ts`, 4 in `forge.test.ts`. 118 grün.
 
-### D6 – Schritt 5: Leon in der UI (Omar) – `842a13d`
+### D6 – Schritt 5: Leon in der UI (Omar)
 
 D6 verlangt, dass die Unterschiede sichtbar genug sind, um gut zu entscheiden.
 
@@ -845,7 +854,7 @@ D6 verlangt, dass die Unterschiede sichtbar genug sind, um gut zu entscheiden.
   LECTURER-Badge, ein blaues Porträt und einen Erklärtext (`note` in
   `speciesRules`).
 - **Schmiede** (`ForgePage.tsx`, Patrick): Tage und Sperre hängen am gewählten
-  Smith – bei Leon ist das Tool gesperrt (mit Grund), die Waffe zeigt "⏱ 2 days"
+  Schmied – bei Leon ist das Tool gesperrt (mit Grund), die Waffe zeigt "⏱ 2 days"
   in Blau. Fortschrittsbalken rechnet mit den echten Tagen. Regeltext ergänzt.
 - **Expedition** (`ExpeditionPanel.tsx`): bei der Crystal Cave "Someone seems to
   be hiding…", danach "Leon … already lives in Stonehome". Regeltext ergänzt.
@@ -867,3 +876,13 @@ alle Regeln aus D1–D5/D7 ohne Extra-Code. Die Unterschiede stehen an einer
 Stelle (`speciesRules`), der Beitritt hängt – wie der Angriff – nur an
 `completeExpedition`. "Nur einmal" wird aus den Bewohnern abgeleitet und beim
 Laden geprüft. 118 Tests, Build grün.
+
+### Abschluss (Patrick & Omar) – Mo 23.11.
+
+Nach D6 haben wir uns zusammengesetzt und alles gemeinsam genau
+durchgesprochen – vor allem die Stellen, an denen unsere Teile ineinandergreifen
+(`isAtHome`, `completeExpedition`, `speciesRules` in Patricks Dateien), damit
+jeder von uns auch den Teil des anderen erklären kann.
+
+Stand: D1–D7 sind in `main`. Die Qualitätsziele
+stehen in `docs/QUALITY.md`, das Diary für die Abgabe in `docs/DIARY.md`.
