@@ -113,7 +113,8 @@ export function ColonyPage() {
             Every dwarf eats 1 ration per day ({meals} total) – also dwarves on
             an expedition, because they pack their ration before leaving. If the
             food runs out, the hold starves: only the Mushroom Farm works until
-            all meals can be served again.
+            all meals can be served again. A lecturer eats like a dwarf, but
+            produces different amounts (see the job list on his card).
           </p>
         </section>
       </section>

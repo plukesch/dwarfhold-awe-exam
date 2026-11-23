@@ -3,7 +3,9 @@ import { Chronicle } from "../components/Chronicle";
 import {
   canAfford,
   canForge,
+  canForgeRecipe,
   daysLeft,
+  forgeDays,
   isForgeFree,
   recipes,
   type Recipe,
@@ -34,6 +36,8 @@ export function ForgePage() {
     ? chosenSmith
     : (eligible[0]?.id ?? "");
 
+  const smith = eligible.find((dwarf) => dwarf.id === smithId);
+
   const task = colony.forgeTask;
   const taskSmith = colony.dwarves.find((dwarf) => dwarf.id === task?.dwarfId);
   const forgeFree = isForgeFree(colony);
@@ -51,8 +55,8 @@ export function ForgePage() {
               <b>day {task.completesOnDay}</b> ({daysLeft(colony)}{" "}
               {daysLeft(colony) === 1 ? "day" : "days"} left).
               <progress
-                max={recipes[task.recipeId].days}
-                value={recipes[task.recipeId].days - daysLeft(colony)}
+                max={forgeDays(recipes[task.recipeId], taskSmith)}
+                value={forgeDays(recipes[task.recipeId], taskSmith) - daysLeft(colony)}
               />
             </p>
           ) : (
@@ -75,6 +79,7 @@ export function ForgePage() {
                   {eligible.map((dwarf) => (
                     <option key={dwarf.id} value={dwarf.id}>
                       {dwarf.name}
+                      {dwarf.species === "lecturer" && " (lecturer)"}
                     </option>
                   ))}
                 </select>
@@ -83,20 +88,26 @@ export function ForgePage() {
           )}
           <p className="rule-note">
             The hold keeps its records: a running order survives a page refresh
-            and is finished on its day.
+            and is finished on its day. Leon, the lecturer, cannot forge tools,
+            but forges a weapon in 2 instead of 3 days.
           </p>
         </section>
 
         {Object.values(recipes).map((recipe) => {
           const affordable = canAfford(colony.resources, recipe);
-          const canStart = forgeFree && affordable && smithId !== "";
+          // D6: does the chosen smith know this recipe, and how fast are they?
+          const allowed = !smith || canForgeRecipe(smith, recipe.id);
+          const days = smith ? forgeDays(recipe, smith) : recipe.days;
+          const canStart = forgeFree && affordable && smithId !== "" && allowed;
           const reason = !forgeFree
             ? "The forge is in use"
-            : !affordable
-              ? "Not enough materials"
-              : smithId === ""
-                ? "No smith available"
-                : undefined;
+            : !allowed
+              ? `${smith?.name} cannot forge a ${recipe.name.toLowerCase()}`
+              : !affordable
+                ? "Not enough materials"
+                : smithId === ""
+                  ? "No smith available"
+                  : undefined;
 
           return (
             <section className="panel forge" key={recipe.id}>
@@ -117,7 +128,9 @@ export function ForgePage() {
                 )}
                 <i>→</i>
                 <span>1 {recipe.icon}</span>
-                <span className="recipe-days">⏱ {recipe.days} days</span>
+                <span className={days < recipe.days ? "recipe-days faster" : "recipe-days"}>
+                  ⏱ {days} {days === 1 ? "day" : "days"}
+                </span>
                 <button
                   disabled={!canStart}
                   title={reason}
@@ -125,6 +138,9 @@ export function ForgePage() {
                 >
                   Forge {recipe.name.toLowerCase()}
                 </button>
+                {!allowed && forgeFree && (
+                  <small className="forge-blocked">{reason}</small>
+                )}
               </div>
             </section>
           );

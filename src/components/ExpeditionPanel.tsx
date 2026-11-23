@@ -4,6 +4,7 @@ import {
   destinations,
   expeditionProblem,
 } from "../game/expeditions";
+import { hasNewcomerJoined, newcomer, NEWCOMER_DESTINATION } from "../game/newcomer";
 import {
   canDefend,
   RAID_DEFENSE_THRESHOLD,
@@ -72,6 +73,14 @@ export function ExpeditionPanel({ colony, onSend }: Props) {
         </select>
       </label>
       <p className="destination-note">{destinations[destination].description}</p>
+      {destination === NEWCOMER_DESTINATION && (
+        // D6: hint where the new resident can be found
+        <p className="newcomer-hint">
+          {hasNewcomerJoined(colony)
+            ? `${newcomer.icon} ${newcomer.name} already lives in Stonehome.`
+            : "👀 Someone seems to be hiding in the glittering tunnels…"}
+        </p>
+      )}
       {destinations[destination].hostile && (
         // D7: show the outcome before the player decides
         <p className={canDefend(colony.resources) ? "raid-forecast ready" : "raid-forecast"}>
@@ -122,7 +131,9 @@ export function ExpeditionPanel({ colony, onSend }: Props) {
         lecturers attack: with {RAID_DEFENSE_THRESHOLD} or more weapons in the
         store Stonehome defends itself and {WEAPONS_LOST_ON_DEFENSE} weapon
         breaks; otherwise they carry off half (rounded down) of the wood, stone
-        and food. A failed journey never leads them home.
+        and food. A failed journey never leads them home. The first successful
+        return from the Crystal Cave brings a new resident home – only once,
+        never after a failed journey.
       </p>
     </section>
   );

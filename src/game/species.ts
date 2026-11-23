@@ -8,6 +8,8 @@ type Job = Exclude<JobType, null>;
 
 export interface SpeciesRules {
   label: string;
+  // short explanation for the player (shown on the resident's card)
+  note: string;
   // what one resident of this species produces per day on each job
   production: Record<Job, Partial<Resources>>;
   // recipes this species cannot forge at all (crafting limitation)
@@ -25,6 +27,7 @@ export interface SpeciesRules {
 export const speciesRules: Record<Species, SpeciesRules> = {
   dwarf: {
     label: "Dwarf",
+    note: "",
     production: {
       woodcutting: { wood: 3 },
       mining: { stone: 2 },
@@ -35,6 +38,7 @@ export const speciesRules: Record<Species, SpeciesRules> = {
   },
   lecturer: {
     label: "Lecturer",
+    note: "Escaped from HCW. Strong miner, weak woodcutter and farmer. Forges a weapon in 2 days, but cannot forge tools.",
     production: {
       woodcutting: { wood: 1 },
       mining: { stone: 4 },
