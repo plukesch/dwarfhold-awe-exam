@@ -5,8 +5,10 @@ Laufende Notizen von Patrick & Omar – Grundlage fürs Exam-Diary.
 ## Aufteilung
 
 - **Patrick:** D1 (Arbeit & Essen), D2 (Tools & Waffen), D3 (Crafting dauert Zeit)
-- **Omar:** D4 (Expeditionen robust), D5 (Speichern/Laden), D7 (Angriff & Verteidigung)
-- **Gemeinsam:** D6 (neue Spezies) – Omar den Beitritt über die Expedition, Patrick Produktion/Crafting
+- **Omar:** D4 (Expeditionen robust), D5 (Speichern/Laden), D7 (Angriff & Verteidigung),
+  D6 (neue Spezies)
+- D6 war ursprünglich gemeinsam geplant, Omar hat es allein umgesetzt. Dabei
+  wurden auch Patricks Dateien angepasst (siehe D6 – Schritt 4/5).
 - Ein Branch pro Requirement, Merge in `main` per Pull Request.
 
 D1–D3 drehen sich um Simulation und Forge, D4/D5/D7 um Expeditionen und State.
@@ -40,6 +42,11 @@ So arbeiten wir größtenteils in verschiedenen Dateien.
 | Ab wann verteidigt sich Stonehome? | Ab **3 Waffen** im Lager. | `RAID_DEFENSE_THRESHOLD` in `game/raid.ts` |
 | Verbraucht die Verteidigung Waffen? | Ja, **1 Waffe bricht** pro abgewehrtem Angriff. | `WEAPONS_LOST_ON_DEFENSE` in `game/raid.ts` |
 | Was wird geplündert? | Ohne Verteidigung nehmen die Lektoren **die Hälfte (abgerundet)** von Holz, Stein und Nahrung. Fest berechnet, nie negativ. Tools und Waffen nehmen sie nicht. | `raidLoot` in `game/raid.ts` |
+| Welche neue Spezies? | **Lecturer**: Leon Freudenthaler, ein Lektor, der aus der HCW geflohen ist und sich in der Crystal Cave versteckt. | `newcomer` in `game/newcomer.ts` |
+| Wann tritt er bei? | Bei der **ersten erfolgreichen** Rückkehr aus der **Crystal Cave**, nur einmal. Ein Fehlschlag (auch durch Refresh) findet ihn nie. Er kommt ohne Job und ohne Tool. | `welcomeNewcomer`, `completeExpedition` |
+| Was produziert er? | Deep Mining **4 Stein** (Zwerg 2), Woodcutting nur **1 Holz** (Zwerg 3), Mushroom Farm nur **2 Essen** (Zwerg 4). | `speciesRules` in `game/species.ts` |
+| Was kann er an der Schmiede? | **Keine Tools** (Einschränkung), dafür eine **Waffe in 2 statt 3 Tagen** (Fähigkeit). | `cannotForge`, `forgeDays` in `game/species.ts` |
+| Welche Regeln gelten sonst für ihn? | Alle wie für Zwerge: isst 1 Ration, ein Status zur Zeit, kann ein Tool tragen (+1 bei Holz/Stein), auf Expedition gehen, Hunger stoppt ihn, wird gespeichert. | Er steht im selben `dwarves`-Array |
 
 ## Log
 
@@ -764,3 +771,99 @@ Durchgespielt im Browser:
 (`completeExpedition` ruft `resolveRaid`), der Provider meldet nur. Dass ein
 Fehlschlag nie angreift, folgt aus dem Aufbau aus D4 und braucht keinen
 Extra-Code. 99 Tests, Build grün.
+
+### D6 – Schritt 1: Spezies als Grundlage (Omar) – `a388c36`
+
+- `types.ts`: `Species = "dwarf" | "lecturer"` und Pflichtfeld
+  `Dwarf.species`. Der Typ heißt weiter `Dwarf` (wird überall benutzt), ein
+  Kommentar erklärt, dass seit D6 auch Nicht-Zwerge darin stehen.
+- Warum im selben Array statt einer eigenen Liste: Alle bestehenden Regeln
+  (Essen, Status, Tools, Expeditionen, Speichern, Konsistenzprüfung) gelten so
+  automatisch für den Neuen. Wir bauen nur die **Unterschiede** ein.
+- Pflichtfeld statt optional: keine versteckte Regel "fehlt = Zwerg".
+- `species: "dwarf"` im `initialState` und in allen Test-Fixtures (auch
+  Patricks Tests, je eine Zeile).
+
+**Tests:** 99 grün, Build grün.
+
+### D6 – Schritt 2: Leon tritt per Expedition bei (Omar) – `f65f582`
+
+Neue Datei `src/game/newcomer.ts`:
+- `NEWCOMER_DESTINATION = "crystal-cave"`, `newcomer` = Leon mit fester id
+  `lecturer-1` (kein Zufall → deterministisch).
+- `hasNewcomerJoined(state)`: gibt es schon einen Lecturer? "Nur einmal" wird
+  **abgeleitet** statt als eigenes Flag gespeichert – so können Flag und Liste
+  sich nie widersprechen.
+- `welcomeNewcomer(state)`: hängt Leon an, wenn er noch nicht da ist, sonst
+  unveränderter State.
+- `completeExpedition` ruft es bei der Crystal Cave auf – gleiches Muster wie
+  der Angriff aus D7: nur bei Erfolg, `failExpedition` kommt nie dorthin.
+  Doppeltes Ergebnis → unbekannte Id → unverändert, also nie ein zweiter Leon.
+
+**Tests:** 7 neue in `expeditions.test.ts` (Beitritt, nur einmal, doppeltes
+Ergebnis, Fehlschlag, anderes Ziel, `welcomeNewcomer` unverändert, er isst ab
+dem nächsten Tag mit). 106 grün.
+
+### D6 – Schritt 3: Leon wird gespeichert (Omar) – `e238ae3`
+
+Neues Pflichtfeld in jedem Bewohner → Form des Spielstands geändert →
+`SAVE_VERSION` von 2 auf **3**. Ein Spielstand von D7 wird abgelehnt (neue
+Kolonie mit Hinweis).
+
+- `isDwarf` prüft `species` (nur bekannte Spezies).
+- `isConsistent`: höchstens **ein** Lecturer (die "nur einmal"-Regel gilt auch
+  beim Laden).
+- Refresh während einer Crystal-Cave-Reise: `failExpedition` → kein Leon.
+
+**Tests:** 4 neue in `persistence.test.ts` (Leon wird gespeichert, unbekannte
+Spezies / zweiter Lecturer, Version-2-Save, abgebrochene Reise bringt ihn
+nicht). 110 grün.
+
+### D6 – Schritt 4: Eigene Produktion und Schmiede (Omar) – `614e953`
+
+Neue Datei `src/game/species.ts`: Tabelle `speciesRules` mit allem, was sich
+zwischen den Spezies unterscheidet (`production`, `cannotForge`, `forgeDays`).
+Was für alle gleich ist, steht bewusst nicht darin.
+
+- `simulation.ts` (Patrick): `productionOf(dwarf)` liefert die Produktion je
+  nach Spezies; `dailyProduction` benutzt sie. Tool-Bonus und Hunger laufen
+  unverändert darüber → gelten automatisch auch für Leon. `production` bleibt
+  als Export für den Shift Ledger und zeigt auf die Zwergen-Zahlen.
+- `forge.ts` (Patrick): `canForgeRecipe` (Leon: kein Tool), `forgeDays`
+  (Spezies-Tage oder `recipe.days`). `forgeProblem` lehnt ab → `startForging`
+  gibt den State unverändert zurück, nichts wird bezahlt.
+- Provider: "ready on day …" rechnet mit `forgeDays`.
+
+**Tests:** 4 in `simulation.test.ts`, 4 in `forge.test.ts`. 118 grün.
+
+### D6 – Schritt 5: Leon in der UI (Omar) – `842a13d`
+
+D6 verlangt, dass die Unterschiede sichtbar genug sind, um gut zu entscheiden.
+
+- **Roster** (`DwarfRoster.tsx`, Patrick): Jede Job-Option zeigt, was **dieser**
+  Bewohner dort produziert ("Deep Mining (+4 🪨)"). Leon hat ein blaues
+  LECTURER-Badge, ein blaues Porträt und einen Erklärtext (`note` in
+  `speciesRules`).
+- **Schmiede** (`ForgePage.tsx`, Patrick): Tage und Sperre hängen am gewählten
+  Smith – bei Leon ist das Tool gesperrt (mit Grund), die Waffe zeigt "⏱ 2 days"
+  in Blau. Fortschrittsbalken rechnet mit den echten Tagen. Regeltext ergänzt.
+- **Expedition** (`ExpeditionPanel.tsx`): bei der Crystal Cave "Someone seems to
+  be hiding…", danach "Leon … already lives in Stonehome". Regeltext ergänzt.
+- **Chronicle**: Effekt im Provider (gleiches Muster wie beim Angriff), Ref
+  startet mit dem geladenen Wert → nach Refresh kein doppelter Eintrag.
+- `ColonyPage.tsx` (Patrick): ein Satz im Essens-Regeltext.
+
+**Browser-Test:** Dori in die Crystal Cave → Chronicle "Leon … joins
+Stonehome!", Hinweis wechselt. Leons Karte zeigt +1/+4/+2. Refresh: Leon noch
+da, kein doppelter Eintrag, Save-Version 3. Schmiede mit Leon: Tool gesperrt,
+Waffe 2 Tage, fertig an Tag 16 (Start Tag 14). Keine Fehler in der Konsole.
+
+### D6 – Schritt 6: Doku und Fazit (Omar)
+
+Teamentscheidungen oben in der Tabelle, `AGENTS.md` aktualisiert.
+
+**Fazit D6:** Der Neue steht im selben Array wie die Zwerge, deshalb gelten
+alle Regeln aus D1–D5/D7 ohne Extra-Code. Die Unterschiede stehen an einer
+Stelle (`speciesRules`), der Beitritt hängt – wie der Angriff – nur an
+`completeExpedition`. "Nur einmal" wird aus den Bewohnern abgeleitet und beim
+Laden geprüft. 118 Tests, Build grün.
