@@ -1,4 +1,5 @@
 import { isAtHome } from "./dwarves";
+import { speciesRules } from "./species";
 import type {
   ColonyState,
   Dwarf,
@@ -65,6 +66,17 @@ export function canForge(dwarf: Dwarf): boolean {
   return isAtHome(dwarf);
 }
 
+// D6: may this smith forge this recipe at all? (Leon cannot forge tools.)
+export function canForgeRecipe(dwarf: Dwarf, recipeId: RecipeId): boolean {
+  return !speciesRules[dwarf.species].cannotForge.includes(recipeId);
+}
+
+// D6: how many days this smith needs for the recipe. Normally the days of the
+// recipe; a species may be faster (Leon forges a weapon in 2 days).
+export function forgeDays(recipe: Recipe, dwarf: Dwarf): number {
+  return speciesRules[dwarf.species].forgeDays[recipe.id] ?? recipe.days;
+}
+
 // Why can't this order start? null = everything is fine.
 export function forgeProblem(
   state: ColonyState,
@@ -78,6 +90,8 @@ export function forgeProblem(
   if (!dwarf) return "Choose a smith first.";
   if (!canForge(dwarf))
     return `${dwarf.name} is busy and cannot work the forge.`;
+  if (!canForgeRecipe(dwarf, recipeId))
+    return `${dwarf.name} cannot forge a ${recipe.name.toLowerCase()}.`;
   const missing = missingMaterials(state.resources, recipe);
   if (missing.length > 0) {
     return `The forge needs more ${missing.join(" and ")} for a ${recipe.name.toLowerCase()}.`;
@@ -98,6 +112,7 @@ export function startForging(
   if (forgeProblem(state, recipeId, dwarfId) !== null) return state;
 
   const recipe = recipes[recipeId];
+  const smith = state.dwarves.find((item) => item.id === dwarfId)!; // checked above
   const resources = { ...state.resources };
   for (const [key, amount] of Object.entries(recipe.cost)) {
     resources[key as ResourceKey] -= amount ?? 0;
@@ -112,7 +127,7 @@ export function startForging(
     forgeTask: {
       recipeId,
       dwarfId,
-      completesOnDay: state.day + recipe.days,
+      completesOnDay: state.day + forgeDays(recipe, smith),
     },
   };
 }

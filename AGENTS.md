@@ -12,7 +12,7 @@ every line they own – so keep code simple and readable.
 |---|---|---|---|
 | Colony work, tools, forge | Patrick | D1, D2, D3 | `src/simulation.ts`, `src/game/forge.ts`, `src/game/tools.ts`, `src/pages/ForgePage.tsx`, `src/components/DwarfRoster.tsx`, Shift Ledger in `ColonyPage.tsx` |
 | Expeditions, persistence, raids | Omar | D4, D5, D7 | `src/game/expeditions.ts`, `src/game/persistence.ts`, `src/game/raid.ts`, `server/index.js`, `src/api.ts`, expedition panel |
-| New species | both | D6 | Omar: joining via expedition + save; Patrick: production/crafting rules + UI |
+| New species | Omar (planned as shared, done alone) | D6 | `src/game/newcomer.ts`, `src/game/species.ts`, small changes in Patrick's `simulation.ts`, `forge.ts`, `DwarfRoster.tsx`, `ForgePage.tsx`, `ColonyPage.tsx` |
 | Quality goals, diary | both | – | `docs/QUALITY.md`, `docs/DEVLOG.md` |
 
 If you need to change a file owned by the other person, keep the change minimal
@@ -95,8 +95,7 @@ Commands: `npm install`, `npm run dev` (web + api), `npm test`, `npm run build`
   Patrick's Shift Ledger in `ColonyPage.tsx`) – busy dwarves greyed out with a
   reason, button disabled via `expeditionProblem`, "On the road" list, rule text.
 - D5 (done, branch `D5`): pure logic in `src/game/persistence.ts`:
-  `SAVE_KEY`, `SAVE_VERSION` (= 2 since D7, raise it whenever `ColonyState` changes, e.g.
-  D6), `serializeSave`, `parseSave(raw)` -> `ColonyState | null` (null for every
+  `SAVE_KEY`, `SAVE_VERSION` (= 3 since D6, raise it whenever `ColonyState` changes), `serializeSave`, `parseSave(raw)` -> `ColonyState | null` (null for every
   problem: not JSON, other version, wrong/missing fields, negative or broken
   numbers, contradicting data). `resumeAfterRefresh(colony)` applies the refresh
   policy: interrupted expeditions -> `failExpedition` (home without loot),
@@ -115,13 +114,29 @@ Commands: `npm install`, `npm run dev` (web + api), `npm test`, `npm run build`
   with `lastRaid: RaidReport` set. `completeExpedition` calls it after booking
   the loot if `destinations[..].hostile` (failExpedition never does).
   `ColonyState.lastRaid: RaidReport | null` – add `lastRaid: null` to new test
-  fixtures. Persisted: `SAVE_VERSION` = 2, checked by `isRaidReport`.
+  fixtures. Persisted (`SAVE_VERSION` 2 at the time), checked by `isRaidReport`.
   UI: `components/RaidBanner.tsx` (3 days after a raid, in `Layout.tsx`),
   chronicle effect on `lastRaid` in the provider, forecast + rule text in the
   expedition panel, "3 needed to defend" on the weapons tile (`ResourceBar`).
   Texts use `describeRaid` and the constants from `raid.ts`. Team decisions: attack right on return, never after
   a failure/refresh, also while paused; defense from 3 weapons, 1 weapon breaks
   per defended raid; otherwise half (rounded down) of wood, stone, food is looted.
+- D6 (done, branch `D6`): new species `lecturer` – Leon Freudenthaler, escaped
+  from HCW, hiding in the Crystal Cave. `Dwarf.species: Species` is required
+  (`"dwarf" | "lecturer"`; add `species: "dwarf"` to new test fixtures). He
+  lives in the same `dwarves` array, so every existing rule (food, status,
+  tools, expeditions, saving) applies to him. `src/game/newcomer.ts`:
+  `NEWCOMER_DESTINATION` (= crystal-cave), `newcomer` (fixed id `lecturer-1`),
+  `hasNewcomerJoined` (derived, no flag), `welcomeNewcomer`;
+  `completeExpedition` calls it on success only. `src/game/species.ts`:
+  `speciesRules` = only the differences (`label`, `note`, `production`,
+  `cannotForge`, `forgeDays`). Lecturer: wood 1 / stone 4 / food 2, cannot forge
+  tools, weapon in 2 days. Used by `productionOf` (`simulation.ts`),
+  `canForgeRecipe` / `forgeDays` (`forge.ts`). Persisted: `SAVE_VERSION` = 3,
+  `isDwarf` checks `species`, `isConsistent` allows at most one lecturer.
+  UI: job options show per-resident output, species badge/note in the roster,
+  per-smith days/limits on `ForgePage`, hint at the Crystal Cave in the
+  expedition panel, chronicle effect `newcomerHere` in the provider.
 - Provider helper `log(message, tone)` adds a chronicle entry – use it instead of
   writing `setActivities(...)` by hand. It takes the day from the `today` ref
   (always the current day, also after an `await`).

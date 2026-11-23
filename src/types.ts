@@ -5,6 +5,9 @@ export type DwarfStatus = "idle" | "working" | "expedition" | "crafting";
 export type RecipeId = "tool" | "weapon";
 // D4: all places a dwarf can travel to (details in game/expeditions.ts)
 export type DestinationId = "crystal-cave" | "old-mine" | "blocked-pass" | "hcw";
+// D6: who a resident is. "lecturer" = Leon, who joins after the first
+// successful expedition to the Crystal Cave (details in game/newcomer.ts).
+export type Species = "dwarf" | "lecturer";
 
 // tools   = tools lying in the store (NOT equipped). Equipped tools are counted
 //           via Dwarf.hasTool -> total tools = resources.tools + equipped dwarves.
@@ -17,11 +20,15 @@ export interface Resources {
   weapons: number;
 }
 
+// One resident of Stonehome. Still called "Dwarf" (used everywhere), but since
+// D6 it can also be a non-dwarf – see `species`. All rules (food, status,
+// tools, expeditions, saving) apply to every resident in this list.
 export interface Dwarf {
   id: string;
   name: string;
   title: string;
   icon: string;
+  species: Species;
   assignment: JobType;
   status: DwarfStatus;
   specialty?: Exclude<JobType, null>;

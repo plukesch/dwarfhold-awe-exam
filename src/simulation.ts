@@ -1,12 +1,18 @@
 import { isAtHome } from "./game/dwarves";
 import { finishForging } from "./game/forge";
+import { speciesRules } from "./game/species";
 import type { ColonyState, Dwarf, JobType, Resources } from "./types";
 
-export const production: Record<Exclude<JobType, null>, Partial<Resources>> = {
-  woodcutting: { wood: 3 },
-  mining: { stone: 2 },
-  farming: { food: 4 },
-};
+// What a dwarf produces per job. D6: the numbers now live in game/species.ts,
+// because Leon (lecturer) produces different amounts.
+export const production: Record<Exclude<JobType, null>, Partial<Resources>> =
+  speciesRules.dwarf.production;
+
+// D6: what THIS resident produces on their job, depending on the species.
+export function productionOf(dwarf: Dwarf): Partial<Resources> {
+  if (dwarf.assignment === null) return {};
+  return speciesRules[dwarf.species].production[dwarf.assignment];
+}
 
 // A dwarf only produces if they have a job AND are actually at work.
 // Dwarves on an expedition (or later: crafting) keep their assignment,
@@ -86,7 +92,7 @@ export function dailyProduction(dwarves: Dwarf[], starving = false): Resources {
     if (isHaltedByHunger(dwarf.assignment, starving)) continue;
 
     const bonus = getsToolBonus(dwarf) ? TOOL_BONUS : 0;
-    const output = production[dwarf.assignment];
+    const output = productionOf(dwarf);
     for (const [resource, amount] of Object.entries(output)) {
       total[resource as keyof Resources] += (amount ?? 0) + bonus;
     }

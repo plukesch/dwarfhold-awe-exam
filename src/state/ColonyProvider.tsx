@@ -8,11 +8,13 @@ import {
   failExpedition,
 } from "../game/expeditions";
 import {
+  forgeDays,
   forgeProblem,
   recipes,
   startForging,
   type RecipeId,
 } from "../game/forge";
+import { hasNewcomerJoined, newcomer } from "../game/newcomer";
 import { describeRaid } from "../game/raid";
 import {
   parseSave,
@@ -51,6 +53,7 @@ const initialState: ColonyState = {
       name: "Bromli Copperkeg",
       title: "Hold Warden",
       icon: "🧔🏻",
+      species: "dwarf",
       assignment: "mining",
       status: "working",
       specialty: "mining",
@@ -61,6 +64,7 @@ const initialState: ColonyState = {
       name: "Yrsa Flintbraid",
       title: "Trail Scout",
       icon: "🧔🏼‍♀️",
+      species: "dwarf",
       assignment: "woodcutting",
       status: "working",
       specialty: "woodcutting",
@@ -71,6 +75,7 @@ const initialState: ColonyState = {
       name: "Dori Ashmantle",
       title: "Stone Singer",
       icon: "🧔🏽",
+      species: "dwarf",
       assignment: null,
       status: "idle",
       hasTool: false,
@@ -226,6 +231,22 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     );
   }, [colony.lastRaid]);
 
+  // D6: Chronicle entry when Leon joins (same idea: completeExpedition lets him
+  // in, the effect only reports it). Starts with the loaded value, so after a
+  // refresh his arrival is not reported again.
+  const newcomerHere = useRef(hasNewcomerJoined(colony));
+  useEffect(() => {
+    const joined = hasNewcomerJoined(colony);
+    if (joined === newcomerHere.current) return;
+    newcomerHere.current = joined;
+    if (!joined) return;
+
+    log(
+      `${newcomer.icon} ${newcomer.name}, a lecturer who escaped from HCW, was hiding in the Crystal Cave – he joins Stonehome!`,
+      "good",
+    );
+  }, [colony.dwarves]);
+
   // Adds one entry to the Hold Chronicle (newest first, max. 6 entries).
   function log(message: string, tone?: Activity["tone"]) {
     setActivities((current) =>
@@ -300,7 +321,7 @@ export function ColonyProvider({ children }: { children: ReactNode }) {
     // start two orders or pay the materials twice.
     setColony((current) => startForging(current, recipeId, dwarfId));
     log(
-      `${dwarf?.name} starts forging a ${recipe.name.toLowerCase()} ${recipe.icon} – ready on day ${colony.day + recipe.days}.`,
+      `${dwarf?.name} starts forging a ${recipe.name.toLowerCase()} ${recipe.icon} – ready on day ${colony.day + (dwarf ? forgeDays(recipe, dwarf) : recipe.days)}.`,
     );
   }
 

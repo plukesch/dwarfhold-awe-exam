@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ColonyState, Dwarf } from "../types";
 import { advanceDay } from "../simulation";
+import { newcomer } from "./newcomer";
 import {
   parseSave,
   resumeAfterRefresh,
@@ -9,7 +10,7 @@ import {
 } from "./persistence";
 
 const dwarf = (overrides: Partial<Dwarf>): Dwarf => ({
-  id: "d1", name: "Brom", title: "", icon: "", assignment: "mining", status: "working", hasTool: false, ...overrides,
+  id: "d1", name: "Brom", title: "", icon: "", species: "dwarf", assignment: "mining", status: "working", hasTool: false, ...overrides,
 });
 
 // A colony in the middle of everything: one dwarf travelling (with a tool),
@@ -92,6 +93,26 @@ describe("saving and loading (D5)", () => {
     expect(parseSave(JSON.stringify({ version: 1, colony: old }))).toBeNull();
   });
 
+  it("Leon is saved and comes back like every other resident (D6)", () => {
+    const colony = busyColony();
+    colony.dwarves.push({ ...newcomer, assignment: "mining", status: "working", hasTool: true });
+    expect(parseSave(serializeSave(colony))).toEqual(colony);
+  });
+
+  it("unknown species or a second lecturer -> null (D6)", () => {
+    expect(parseSave(saveWith((c) => (c.dwarves[2].species = "elf")))).toBeNull();
+    expect(parseSave(saveWith((c) => delete c.dwarves[2].species))).toBeNull();
+    expect(
+      parseSave(saveWith((c) => c.dwarves.push(newcomer, { ...newcomer, id: "lecturer-2" }))),
+    ).toBeNull();
+  });
+
+  it("a save from before D6 (version 2, no species) -> null", () => {
+    const old = structuredClone(busyColony()) as Record<string, any>;
+    for (const resident of old.dwarves) delete resident.species;
+    expect(parseSave(JSON.stringify({ version: 2, colony: old }))).toBeNull();
+  });
+
   it("contradicting data -> null", () => {
     // travelling, but not in the expedition list
     expect(parseSave(saveWith((c) => (c.expeditions = [])))).toBeNull();
@@ -141,6 +162,11 @@ describe("work interrupted by a refresh (D5 policy)", () => {
     const { colony: resumed } = resumeAfterRefresh(colony);
     expect(resumed.lastRaid).toEqual(colony.lastRaid);
     expect(resumed.resources).toEqual(colony.resources);
+  });
+
+  it("an interrupted journey to the Crystal Cave does not bring Leon (D6)", () => {
+    const { colony: resumed } = resumeAfterRefresh(busyColony());
+    expect(resumed.dwarves.some((item) => item.species === "lecturer")).toBe(false);
   });
 
   it("a restored save can be resumed and saved again", () => {

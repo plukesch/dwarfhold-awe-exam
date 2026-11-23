@@ -8,7 +8,17 @@ import {
   jobLabel,
   TOOL_BONUS,
 } from "../simulation";
+import { speciesRules } from "../game/species";
 import type { Dwarf, JobType } from "../types";
+
+const resourceIcon = { wood: "🪵", stone: "🪨", food: "🍄", tools: "⚒️", weapons: "🗡️" };
+
+// D6: "Deep Mining (+4 🪨)" – what THIS resident would produce on the job,
+// so the player sees the difference between the species before assigning.
+function jobOption(dwarf: Dwarf, job: Exclude<JobType, null>): string {
+  const [resource, amount] = Object.entries(speciesRules[dwarf.species].production[job])[0];
+  return `${jobLabel(job)} (+${amount} ${resourceIcon[resource as keyof typeof resourceIcon]})`;
+}
 
 const jobs: Exclude<JobType, null>[] = ["woodcutting", "mining", "farming"];
 
@@ -54,9 +64,11 @@ export function DwarfRoster({
           const specialty = dwarf.specialty
             ? `Skilled in ${jobLabel(dwarf.specialty)}`
             : "Generalist";
+          const rules = speciesRules[dwarf.species];
+          const classes = ["dwarf", dwarf.species, isAway ? "away" : ""].join(" ").trim();
 
           return (
-            <article className={isAway ? "dwarf away" : "dwarf"} key={dwarf.id}>
+            <article className={classes} key={dwarf.id}>
               <div className="portrait">
                 {dwarf.icon}
                 <i className={dwarf.status} />
@@ -72,8 +84,12 @@ export function DwarfRoster({
                   )}
                 </h3>
                 <p>
+                  {dwarf.species !== "dwarf" && (
+                    <span className="species-badge">{rules.label}</span>
+                  )}
                   {dwarf.title} · {specialty}
                 </p>
+                {rules.note && <small className="species-note">{rules.note}</small>}
                 {dwarf.hasTool && (
                   <small
                     className={
@@ -101,7 +117,7 @@ export function DwarfRoster({
                   <option value="">Unassigned</option>
                   {jobs.map((job) => (
                     <option value={job} key={job}>
-                      {jobLabel(job)}
+                      {jobOption(dwarf, job)}
                     </option>
                   ))}
                 </select>

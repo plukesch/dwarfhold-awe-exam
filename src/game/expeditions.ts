@@ -1,4 +1,5 @@
 import { isAtHome } from "./dwarves";
+import { NEWCOMER_DESTINATION, welcomeNewcomer } from "./newcomer";
 import { resolveRaid } from "./raid";
 import type {
   ColonyState,
@@ -140,6 +141,8 @@ function endExpedition(
 // attack right after the loot is stored. Only here – failExpedition never
 // leads to an attack. An unknown id (result arrived twice) changes nothing,
 // so there is also never a second attack.
+// D6: from the Crystal Cave the scout brings Leon along (only the first time,
+// see welcomeNewcomer). Also only on success, never in failExpedition.
 export function completeExpedition(
   state: ColonyState,
   expeditionId: string,
@@ -148,7 +151,8 @@ export function completeExpedition(
   const expedition = state.expeditions.find((item) => item.id === expeditionId);
   if (!expedition) return state;
 
-  const home = endExpedition(state, expeditionId, rewards);
+  let home = endExpedition(state, expeditionId, rewards);
+  if (expedition.destination === NEWCOMER_DESTINATION) home = welcomeNewcomer(home);
   if (!destinations[expedition.destination].hostile) return home;
   return resolveRaid(home);
 }

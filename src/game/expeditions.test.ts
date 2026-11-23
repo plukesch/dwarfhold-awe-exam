@@ -9,9 +9,10 @@ import {
   expeditionProblem,
   failExpedition,
 } from "./expeditions";
+import { hasNewcomerJoined, newcomer, welcomeNewcomer } from "./newcomer";
 
 const dwarf = (overrides: Partial<Dwarf>): Dwarf => ({
-  id: "d1", name: "Brom", title: "", icon: "", assignment: "mining", status: "working", hasTool: false, ...overrides,
+  id: "d1", name: "Brom", title: "", icon: "", species: "dwarf", assignment: "mining", status: "working", hasTool: false, ...overrides,
 });
 
 const colony = (dwarves: Dwarf[] = [dwarf({})]): ColonyState => ({
@@ -164,5 +165,47 @@ describe("returning from HCW: the lecturers attack (D7)", () => {
   it("other destinations do not attack", () => {
     const away = departExpedition(colony(), "e1", "d1", "old-mine");
     expect(completeExpedition(away, "e1", { stone: 12 }).lastRaid).toBeNull();
+  });
+});
+
+describe("Leon joins from the Crystal Cave (D6)", () => {
+  const toCave = (state = colony()) => departExpedition(state, "e1", "d1", "crystal-cave");
+  const leon = (state: ColonyState) => state.dwarves.filter((item) => item.species === "lecturer");
+
+  it("the first successful return brings Leon home – idle, no job, no tool", () => {
+    const next = completeExpedition(toCave(), "e1", { stone: 8 });
+    expect(hasNewcomerJoined(next)).toBe(true);
+    expect(leon(next)).toEqual([newcomer]);
+    expect(leon(next)[0]).toMatchObject({ status: "idle", assignment: null, hasTool: false });
+  });
+
+  it("he joins only once, even after a second trip to the cave", () => {
+    const first = completeExpedition(toCave(), "e1", {});
+    const second = completeExpedition(departExpedition(first, "e2", "d1", "crystal-cave"), "e2", {});
+    expect(leon(second)).toHaveLength(1);
+  });
+
+  it("the same result arriving twice does not bring a second Leon", () => {
+    const once = completeExpedition(toCave(), "e1", {});
+    expect(completeExpedition(once, "e1", {})).toBe(once);
+  });
+
+  it("a failed journey to the cave never finds him", () => {
+    expect(hasNewcomerJoined(failExpedition(toCave(), "e1"))).toBe(false);
+  });
+
+  it("other destinations do not bring him", () => {
+    const away = departExpedition(colony(), "e1", "d1", "old-mine");
+    expect(hasNewcomerJoined(completeExpedition(away, "e1", {}))).toBe(false);
+  });
+
+  it("welcomeNewcomer leaves the state unchanged if he is already there", () => {
+    const withLeon = welcomeNewcomer(colony());
+    expect(welcomeNewcomer(withLeon)).toBe(withLeon);
+  });
+
+  it("from the next day on he eats a ration like everyone else", () => {
+    const next = advanceDay(completeExpedition(toCave(), "e1", {}));
+    expect(next.resources.food).toBe(8); // 10 - 2 residents
   });
 });
