@@ -18,8 +18,8 @@ export const SAVE_KEY = "dwarfhold-save";
 // Raise this number whenever the shape of ColonyState changes (e.g. D6 adds
 // the new species). An older save then no longer matches and the game safely
 // starts fresh instead of loading half-fitting data.
-// 1 = D5, 2 = D7 added `lastRaid`.
-export const SAVE_VERSION = 2;
+// 1 = D5, 2 = D7 added `lastRaid`, 3 = D6 added `species` to every resident.
+export const SAVE_VERSION = 3;
 
 // What is stored: the version plus the whole colony state.
 export function serializeSave(colony: ColonyState): string {
@@ -50,6 +50,7 @@ export function parseSave(raw: string | null): ColonyState | null {
 const resourceKeys: ResourceKey[] = ["wood", "stone", "food", "tools", "weapons"];
 const jobs = ["woodcutting", "mining", "farming"];
 const statuses = ["idle", "working", "expedition", "crafting"];
+const species = ["dwarf", "lecturer"];
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -67,6 +68,7 @@ function isDwarf(value: unknown): value is Dwarf {
     typeof value.name === "string" &&
     typeof value.title === "string" &&
     typeof value.icon === "string" &&
+    species.includes(value.species as string) &&
     (value.assignment === null || jobs.includes(value.assignment as string)) &&
     statuses.includes(value.status as string) &&
     (value.specialty === undefined || jobs.includes(value.specialty as string)) &&
@@ -133,6 +135,10 @@ function isColony(value: unknown): value is ColonyState {
 function isConsistent(colony: ColonyState): boolean {
   const dwarfIds = colony.dwarves.map((dwarf) => dwarf.id);
   if (hasDuplicates(dwarfIds)) return false;
+
+  // D6: Leon joins only once -> at most one lecturer in Stonehome.
+  const lecturers = colony.dwarves.filter((dwarf) => dwarf.species === "lecturer");
+  if (lecturers.length > 1) return false;
 
   // Expeditions: every dwarf with status "expedition" has exactly one entry
   // in the list, and every entry belongs to such a dwarf.
